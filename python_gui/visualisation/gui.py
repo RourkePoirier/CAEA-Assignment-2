@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 from displacement_window import DisplacementWindow
 from stress_window import StressWindow
 from strain_window import StrainWindow
+from temp_window import TempWindow
 
 ##########################################################################################
 
@@ -95,6 +96,15 @@ class GUIManager:
         notebook.add(tab3, text='Strain')
 
         StrainWindow(X, Y, Ex, Ey, Exy, n_element, n_nodes, ncon, tab3)
+
+        #
+        #   Page 4 - Temperature
+        #
+
+        tab4 = ttk.Frame(notebook)
+        notebook.add(tab4, text='Temperature')
+
+        TempWindow(tab4)
 
     def on_close(self):
         plt.close('all')
