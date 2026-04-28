@@ -1,0 +1,8 @@
+**/stress_x.xlsx
+**/stress_y.xlsx
+**/stress_xy.xlsx
+**/displacement.xlsx
+**/build
+**/__pycache__
+.vscode/extensions.json
+.vscode/launch.json
