@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import simpledialog
 
 class ForceDialog(simpledialog.Dialog):
+    
     def __init__(self, parent, title="Define Force"):
         self.magnitude = None
         self.angle = None

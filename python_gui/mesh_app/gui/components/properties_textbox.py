@@ -56,8 +56,7 @@ class PropertiesWindow(tk.Frame):
         except ValueError:
             pass
 
-    def get_material_properties(self):
-        return self.material_properties
+    def get_material_properties(self): return self.material_properties
 
 
 if __name__ == "__main__":
