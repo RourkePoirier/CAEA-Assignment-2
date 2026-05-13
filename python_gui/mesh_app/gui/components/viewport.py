@@ -10,6 +10,7 @@ import tkinter as tk
 from enum import Enum
 
 from gui.components.force_dialog import ForceDialog
+from gui.components.thermal_bc_dialog import ThermalBCDialog
 
 from geometry.components.types import *
 from geometry.manager import GeometryManager
@@ -48,6 +49,7 @@ class Viewport(tk.Frame):
         self._init_w   = width
         self._init_h   = height
         self.tool        = Tool.NODE
+        self._hovered_edge: Edge | None = None
         self._drag_start = None
 
         # Toolbar
@@ -141,6 +143,7 @@ class Viewport(tk.Frame):
         self._draw_elements()
         self._draw_forces()
         self._draw_nodes()
+        self._draw_thermal_bcs()
 
     def _draw_grid(self):
         w = self.canvas.winfo_width()
@@ -208,8 +211,8 @@ class Viewport(tk.Frame):
 
             self.canvas.create_line(x0, y0, x1, y1, arrow=tk.LAST, fill="red", width=2)
             
-            if(f.pxy == True): self.canvas.create_text(x1, y1, text="Pxy", fill="red", font=("Arial", 12, "bold"), anchor="sw")
-            if(f.pz == True): self.canvas.create_text(x1, y1, text="Pz", fill="red", font=("Arial", 12, "bold"), anchor="sw")
+            if f.pxy: self.canvas.create_text(x1, y1, text="Pxy", fill="red", font=("Arial", 12, "bold"), anchor="sw")
+            if f.pz: self.canvas.create_text(x1, y1, text="Pz", fill="red", font=("Arial", 12, "bold"), anchor="sw")
 
             self.canvas.create_text(x2, y2, text=f"{f.magnitude}N", fill="red", font=("Arial", 10), anchor="sw")
 
@@ -236,6 +239,46 @@ class Viewport(tk.Frame):
             )
             self.canvas.tag_raise(text_id)
 
+    def _draw_thermal_bcs(self):
+        nodes = self.geometry.get_nodes()
+        if not nodes: return
+
+        for edge in self.geometry.get_boundary_edges():
+            bc     = self.geometry.get_thermal_bc(edge)
+            is_hov = (edge == self._hovered_edge and self.tool == Tool.THERMAL)
+
+            # Colour — hovered unset edge gets a highlight, set edges get their BC colour
+            if is_hov and bc is None:
+                colour = "#FFA500"   # orange hover
+                width  = 3
+            elif bc is not None:
+                colour = BC_COLOURS[bc.type]
+                width  = 3 if is_hov else 2
+            else: continue             # unset + not hovered → don't draw anything
+
+            a, b = edge.node_indices
+
+            # boundary edges index into base_nodes, not subdivided nodes
+            na = self.geometry.base_nodes[a]
+            nb = self.geometry.base_nodes[b]
+            x0, y0 = self.world_to_screen(na.x, na.y)
+            x1, y1 = self.world_to_screen(nb.x, nb.y)
+
+            self.canvas.create_line(x0, y0, x1, y1, fill=colour, width=width, tags="thermal")
+
+            # Label — midpoint
+            mx, my = (x0+x1)/2, (y0+y1)/2
+            if bc is not None:
+                label = f"{bc.type.value}\n{bc.value:.0f}" if bc.value else bc.type.value
+                self.canvas.create_text(mx, my - 10, text=label, fill=colour, font=("Arial", 8, "bold"), tags="thermal")
+
+    def _open_thermal_bc_dialog(self, edge: Edge) -> None:
+        dlg = ThermalBCDialog(self, existing=self.geometry.get_thermal_bc(edge))
+        if dlg.result is None: return
+        if dlg.result == "clear": self.geometry.thermal_bcs.pop(edge, None)
+        else: self.geometry.set_thermal_bc(edge, dlg.result)
+        self._redraw()
+        
     ############################################################################
     # ---------- INPUT HANDLERS ----------
     ############################################################################
@@ -259,7 +302,8 @@ class Viewport(tk.Frame):
                 self.geometry.add_force(Force(node, magnitude=dlg.magnitude, angle=dlg.angle, pxy=dlg.is_pxy, pz=dlg.is_pz))
 
             case Tool.THERMAL:
-                print("YAY")
+                if self._hovered_edge is None: return
+                self._open_thermal_bc_dialog(self._hovered_edge)
 
         self.geometry.update()
         self._redraw()
@@ -272,9 +316,8 @@ class Viewport(tk.Frame):
 
     def _on_mouse_move(self, event):
 
-        if(self.tool == Tool.THERMAL): pass
-
         node = self._find_nearest_node(event.x, event.y)
+
         if node: self._draw_tooltip(event.x, event.y, node)
         else:
             x, y = self.snap(event.x, event.y)
@@ -284,6 +327,12 @@ class Viewport(tk.Frame):
                 text=f"x={self._round_metres(x)}, y={self._round_metres(y)}",
                 anchor="sw", tags="tooltip", fill="#888888", font=("Arial", 8)
             )
+
+        if self.tool == Tool.THERMAL:
+            prev = self._hovered_edge
+            self._hovered_edge = self._find_nearest_edge(event.x, event.y)
+            if self._hovered_edge != prev:
+                self._redraw()
 
     def _on_drag_start(self, event):
         self._drag_start = (event.x, event.y)
@@ -318,7 +367,13 @@ class Viewport(tk.Frame):
             while x >= stop - step * 1e-9:
                 yield x
                 x -= step
-
+    
+    def _point_to_segment_dist(self, px, py, ax, ay, bx, by) -> float:
+        dx, dy = bx - ax, by - ay
+        if dx == 0 and dy == 0: return math.hypot(px - ax, py - ay)
+        t = max(0.0, min(1.0, ((px-ax)*dx + (py-ay)*dy) / (dx*dx + dy*dy)))
+        return math.hypot(px - (ax + t*dx), py - (ay + t*dy))
+    
     def _find_nearest_node(self, px, py):
         radius_px = NODE_RADIUS_PX + 4
         for node in self.geometry.get_placed_nodes():
@@ -328,6 +383,23 @@ class Viewport(tk.Frame):
                 return node
         return None
 
+    def _find_nearest_edge(self, px, py, threshold_px=8) -> Edge | None:
+        best      = None
+        best_dist = threshold_px
+
+        for edge in self.geometry.get_boundary_edges():
+            a, b = edge.node_indices
+            na   = self.geometry.base_nodes[a]
+            nb   = self.geometry.base_nodes[b]
+            ax, ay = self.world_to_screen(na.x, na.y)
+            bx, by = self.world_to_screen(nb.x, nb.y)
+            dist   = self._point_to_segment_dist(px, py, ax, ay, bx, by)
+            if dist < best_dist:
+                best_dist = dist
+                best      = edge
+
+        return best
+    
     def _set_tool(self, t: Tool)  -> None: 
         self.tool = t
         self._selected_tool.set(t.name) 

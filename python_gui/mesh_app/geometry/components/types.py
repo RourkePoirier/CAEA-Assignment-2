@@ -11,13 +11,13 @@ from enum import Enum, StrEnum
 ##########################################################################
 
 class MeshScheme(StrEnum):
-    DELAUNAY        = "Delaunay"        # Fixed typo: "Delauny" -> "Delaunay"
+    DELAUNAY        = "Delaunay"
     RADIAL          = "Radial"
     ADVANCING_FRONT = "Advancing Front"
     NOTHING         = "Nothing"
 
 class NodeType(Enum):
-    NORMAL = 1  # Removed trailing commas — they create single-element tuples
+    NORMAL = 1 
     FIXED  = 2
     FORCE  = 3
 
@@ -38,15 +38,15 @@ class Node:
 
 @dataclass
 class Element:
-    node_indices: tuple[int, int, int]  # Fixed typo: indicies -> indices
+    node_indices: tuple[int, int, int]
 
     def get_nodes(self, nodes: list[Node]) -> tuple[Node, Node, Node]:
         a, b, c = self.node_indices
         return nodes[a], nodes[b], nodes[c]
 
-@dataclass
+@dataclass(frozen=True)
 class Edge:
-    node_indices: tuple[int, int]       # Fixed typo: indicies -> indices
+    node_indices: tuple[int, int]
 
     def get_nodes(self, nodes: list[Node]) -> tuple[Node, Node]:
         a, b = self.node_indices
@@ -60,4 +60,21 @@ class Force:
     pxy:       bool
     pz:        bool
 
+## Thermal Boundary Condition Representation
+class ThermalBCType(Enum):
+    HEAT_FLUX    = "Heat Flux"
+    FIXED_TEMP   = "Fixed Temp"
+    INSULATED    = "Insulated"
+
+@dataclass
+class ThermalBC:
+    type:  ThermalBCType
+    value: float = 0.0   # W/m² for flux, °C for fixed temp
+
+BC_COLOURS = {
+    ThermalBCType.HEAT_FLUX:  "#CC0000",   # red
+    ThermalBCType.FIXED_TEMP: "#FF5E00",   # orange
+    ThermalBCType.INSULATED:  "#888888",   # grey
+}
+    
 ##########################################################################
