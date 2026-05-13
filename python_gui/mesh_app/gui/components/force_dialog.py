@@ -22,8 +22,9 @@ class ForceDialog(simpledialog.Dialog):
         self.pxy_var = tk.IntVar()
         self.pz_var = tk.IntVar()
 
-        tk.Checkbutton(master, text="Pxy", variable=self.pxy_var, command=self._on_pxy).grid(row=2, column=0, sticky="w")
-        tk.Checkbutton(master, text="Pz",  variable=self.pz_var, command=self._on_pz).grid(row=2, column=1, sticky="w")
+        tk.Label(master, text="Define as Cutting forces").grid(row=3, column=0, sticky="w")
+        tk.Checkbutton(master, text="Pxy (Primary Cutting Force)", variable=self.pxy_var, command=self._on_pxy).grid(row=4, column=0, sticky="w")
+        tk.Checkbutton(master, text="Pz (Feed/Thrust Force)",  variable=self.pz_var, command=self._on_pz).grid(row=4, column=1, sticky="w")
 
         return self.mag_entry
 

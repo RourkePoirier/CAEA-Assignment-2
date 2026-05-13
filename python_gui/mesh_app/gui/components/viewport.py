@@ -28,7 +28,7 @@ MIN_GRID_PX    = 8
 
 class Tool(Enum):
     NODE       = 1
-    FIXED_NODE = 2
+    FIXED      = 2
     FORCE      = 3
     THERMAL    = 4
 
@@ -53,15 +53,30 @@ class Viewport(tk.Frame):
         # Toolbar
         ctrl_bar = tk.Frame(self, bg="#f0f0f0", pady=2)
         ctrl_bar.pack(fill="x", side="top")
+
         tk.Label(ctrl_bar, text="Unit:", bg="#f0f0f0").pack(side="left", padx=(6, 2))
         self._unit_var = tk.StringVar(value=DEFAULT_UNIT)
         unit_menu = tk.OptionMenu(ctrl_bar, self._unit_var, *UNITS.keys(), command=self._on_unit_change)
         unit_menu.config(width=4)
         unit_menu.pack(side="left")
+
         tk.Label(ctrl_bar,
                  text="CONTROLS:  [R] Reset view   [1] Node   [2] Fixed   [3] Force   [4] Thermal BCs",
                  bg="#f0f0f0", fg="#666666", font=("Arial", 8)
                  ).pack(side="left", padx=8)
+
+        self._selected_tool = tk.StringVar(value=self.tool.name)
+
+        tk.Label(ctrl_bar,
+                 textvariable=self._selected_tool,
+                 font=("Arial", 12, "bold")
+                 ).pack(side="right", padx=8)
+        
+        tk.Label(ctrl_bar,
+                 text="Current Tool: ",
+                 font=("Arial", 12, "bold")
+                 ).pack(side="right", padx=8)
+        
 
         # Canvas
         self.canvas = tk.Canvas(self, width=width, height=height, bg="white")
@@ -76,7 +91,7 @@ class Viewport(tk.Frame):
         self.canvas.bind("<Configure>",       lambda e: self._redraw())
 
         self.bind_all("1", lambda e: self._set_tool(Tool.NODE))
-        self.bind_all("2", lambda e: self._set_tool(Tool.FIXED_NODE))
+        self.bind_all("2", lambda e: self._set_tool(Tool.FIXED))
         self.bind_all("3", lambda e: self._set_tool(Tool.FORCE))
         self.bind_all("4", lambda e: self._set_tool(Tool.THERMAL))
         self.bind_all("r", lambda e: self._reset_view())
@@ -233,7 +248,7 @@ class Viewport(tk.Frame):
             case Tool.NODE:
                 self.geometry.add_node(Node(x, y, NodeType.NORMAL))
 
-            case Tool.FIXED_NODE:
+            case Tool.FIXED:
                 self.geometry.add_node(Node(x, y, NodeType.FIXED))
 
             case Tool.FORCE:
@@ -313,7 +328,9 @@ class Viewport(tk.Frame):
                 return node
         return None
 
-    def _set_tool(self, t: Tool)  -> None: self.tool = t
+    def _set_tool(self, t: Tool)  -> None: 
+        self.tool = t
+        self._selected_tool.set(t.name) 
 
     def _reset_view(self) -> None:
         self.scale    = self._unit["scale"]
