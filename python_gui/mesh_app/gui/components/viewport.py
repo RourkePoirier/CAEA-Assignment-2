@@ -23,13 +23,14 @@ UNITS = {
 
 DEFAULT_UNIT   = "mm"
 NODE_RADIUS_PX = 5
-FORCE_ARROW_PX = 60
+FORCE_ARROW_PX = 40
 MIN_GRID_PX    = 8
 
 class Tool(Enum):
     NODE       = 1
     FIXED_NODE = 2
     FORCE      = 3
+    THERMAL    = 4
 
 class Viewport(tk.Frame):
 
@@ -58,7 +59,7 @@ class Viewport(tk.Frame):
         unit_menu.config(width=4)
         unit_menu.pack(side="left")
         tk.Label(ctrl_bar,
-                 text="  [R] Reset view   [1] Node   [2] Fixed   [3] Force",
+                 text="CONTROLS:  [R] Reset view   [1] Node   [2] Fixed   [3] Force   [4] Thermal BCs",
                  bg="#f0f0f0", fg="#666666", font=("Arial", 8)
                  ).pack(side="left", padx=8)
 
@@ -77,6 +78,7 @@ class Viewport(tk.Frame):
         self.bind_all("1", lambda e: self._set_tool(Tool.NODE))
         self.bind_all("2", lambda e: self._set_tool(Tool.FIXED_NODE))
         self.bind_all("3", lambda e: self._set_tool(Tool.FORCE))
+        self.bind_all("4", lambda e: self._set_tool(Tool.THERMAL))
         self.bind_all("r", lambda e: self._reset_view())
 
         self._redraw()
@@ -186,8 +188,15 @@ class Viewport(tk.Frame):
             rad = math.radians(f.angle)
             x1  = x0 + math.cos(rad) * FORCE_ARROW_PX
             y1  = y0 - math.sin(rad) * FORCE_ARROW_PX
+            x2  = x1 + math.cos(rad) * FORCE_ARROW_PX
+            y2  = y1 - math.sin(rad) * FORCE_ARROW_PX
+
             self.canvas.create_line(x0, y0, x1, y1, arrow=tk.LAST, fill="red", width=2)
-            self.canvas.create_text(x1, y1, text=f"{f.magnitude}N", fill="red", font=("Arial", 7), anchor="sw")
+            
+            if(f.pxy == True): self.canvas.create_text(x1, y1, text="Pxy", fill="red", font=("Arial", 12, "bold"), anchor="sw")
+            if(f.pz == True): self.canvas.create_text(x1, y1, text="Pz", fill="red", font=("Arial", 12, "bold"), anchor="sw")
+
+            self.canvas.create_text(x2, y2, text=f"{f.magnitude}N", fill="red", font=("Arial", 10), anchor="sw")
 
     def _draw_elements(self):
         nodes = self.geometry.get_nodes()
@@ -218,8 +227,7 @@ class Viewport(tk.Frame):
 
     def _on_left_click(self, event):
         x, y = self.snap(event.x, event.y)
-        if self.geometry.node_exists_at(x, y):
-            return
+        if self.geometry.node_exists_at(x, y): return
 
         match self.tool:
             case Tool.NODE:
@@ -230,11 +238,13 @@ class Viewport(tk.Frame):
 
             case Tool.FORCE:
                 dlg = ForceDialog(self, "Define Force")
-                if dlg.magnitude is None or dlg.angle is None:
-                    return
+                if dlg.magnitude is None or dlg.angle is None: return
                 node = Node(x, y, NodeType.FORCE)
                 self.geometry.add_node(node)
-                self.geometry.add_force(Force(node, magnitude=dlg.magnitude, angle=dlg.angle))
+                self.geometry.add_force(Force(node, magnitude=dlg.magnitude, angle=dlg.angle, pxy=dlg.is_pxy, pz=dlg.is_pz))
+
+            case Tool.THERMAL:
+                print("YAY")
 
         self.geometry.update()
         self._redraw()
@@ -246,9 +256,11 @@ class Viewport(tk.Frame):
         self._redraw()
 
     def _on_mouse_move(self, event):
+
+        if(self.tool == Tool.THERMAL): pass
+
         node = self._find_nearest_node(event.x, event.y)
-        if node:
-            self._draw_tooltip(event.x, event.y, node)
+        if node: self._draw_tooltip(event.x, event.y, node)
         else:
             x, y = self.snap(event.x, event.y)
             self.canvas.delete("tooltip")
@@ -319,12 +331,4 @@ class Viewport(tk.Frame):
 
     def clear(self) -> None:
         self.geometry.clear()
-        self._redraw()
-
-    def subdivide_up(self) -> None:
-        self.geometry.subdivide_up()
-        self._redraw()
-
-    def subdivide_down(self) -> None:
-        self.geometry.subdivide_down()
         self._redraw()

@@ -216,3 +216,96 @@ function [D] = calc_strain_stress_matrix(E, v)
 
 end
 
+%% Thermal MATLAB Code provided by Sarat
+
+clear;
+
+% Record given values
+n = 4;
+m = 4;
+via = 20;
+
+lx = 0;
+ux = 10;
+
+ly = 0;
+uy = 10;
+
+% Assemble B matrix
+B = [0 10 20 0; 10 120 60 10; 10 90 110 10; 0 40 30 0];
+t = 0:1/(via-1):1;
+
+
+% Preallocate U and W to avoid them changing size on every iteration of the following loop
+U = zeros(via, n);
+W = zeros(via, m);
+
+% Assemble U and W matrices
+for j=1:via
+    for i=1:n
+        U(j,i) = t(j)^(n-i);
+    end
+    % Combined identical outer for-loops to condense efficiently.
+    for i=1:m
+        W(j,i) = t(j)^(m-i);
+    end
+end
+
+% Preallocate N to avoid it changing size on every iteration
+% As a bonus it renders the else statement unnecessary
+N = zeros(n,n);
+% Assemble N
+for i=1:n
+    for j=1:n
+        if(i+j-1<=n)
+            N(i,j) = (factorial(n-1)/(factorial(j-1)*factorial(i-1)*factorial(n-i-j+1)))*((-1)^(n-i-j+1));
+        %else
+        %    N(i,j) = 0;
+        end
+    end
+end
+
+% Preallocate M to avoid it changing size on every iteration
+% As a bonus it renders the else statement unnecessary
+M = zeros(m,m);
+% Assemble N
+for i=1:m
+    for j=1:m
+        if(i+j-1<=m)
+            M(i,j) = (factorial(m-1)/(factorial(j-1)*factorial(i-1)*factorial(m-i-j+1)))*((-1)^(m-i-j+1));
+        %else
+        %    M(i,j) = 0;
+        end
+    end
+end
+
+
+% Calculate Z
+Z = U * N * B * M' * W';
+
+% Calculate X and Y
+rx = lx:(ux-lx)/(via-1):ux;
+ry = ly:(uy-ly)/(via-1):uy;
+[X,Y] = meshgrid(rx,ry);
+
+% Plot the surface
+figure
+mesh(X,Y,Z)
+hold on
+
+% Create new vectors with significanty less subdivisions
+X1 = lx:(ux-lx)/(n-1):ux;
+Y1 = ly:(uy-ly)/(m-1):uy;
+
+% Plot the low res surface
+mesh(X1,Y1,B)
+hold on
+hidden off
+
+% Plot the original surface again (idk why)
+figure
+mesh(X,Y,Z)
+
+% Plot it solid this time
+figure
+surf(X,Y,Z)

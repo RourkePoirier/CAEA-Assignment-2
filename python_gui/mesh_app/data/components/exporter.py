@@ -1,12 +1,5 @@
 import pandas as pd
-from data_handling.types import *
-
-def write_to_excel(data, header, filename):
-        df_full = pd.DataFrame({
-            header: data,
-        })
-
-        df_full.to_excel(filename, index=False)
+from data.components.types import *
     
 def write_data_structure_to_excel(output: ExcelOutputFormat, filename):
     

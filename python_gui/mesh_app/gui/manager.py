@@ -15,7 +15,8 @@ from gui.components import *
 from geometry.components.types import *
 from geometry.manager import GeometryManager
 
-from data_handling.types import ExcelOutputFormat
+from data.components.types import ExcelOutputFormat
+from data.components.exporter import *
 
 class GUIManager:
 
@@ -62,7 +63,7 @@ class GUIManager:
     # ---------- EXPORT ----------
     def export_excel(self):
         output = self.construct_output()
-        self.write_data_structure_to_excel(output, filename='data_structure.xlsx')
+        write_data_structure_to_excel(output, filename='data_structure.xlsx')
 
     def construct_output(self):
         try:

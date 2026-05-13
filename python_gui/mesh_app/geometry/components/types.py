@@ -57,5 +57,7 @@ class Force:
     node:      Node
     angle:     float
     magnitude: float
+    pxy:       bool
+    pz:        bool
 
 ##########################################################################

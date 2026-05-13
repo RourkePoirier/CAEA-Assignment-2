@@ -12,7 +12,8 @@ class PropertiesWindow(tk.Frame):
             entries = [
                 ("Young's Modulus", "Pa"),
                 ("Thickness", "m"),
-                ("Poisson's Ratio", "")
+                ("Poisson's Ratio", ""),
+                ("Material Conductivity (k)", "W/m*K")
             ]
 
         self.entry_widgets = {}
