@@ -5,6 +5,7 @@ from geometry.manager import GeometryManager
 
 ELASTOSTATICS_FILENAME = 'data_structure.xlsx'
 
+## REFERENCE
 class ExcelOutputFormat:
     n_element:  int             # Number of Triangular Elements
     n_nodes:    int             # Number of Nodes
@@ -21,7 +22,9 @@ class ExcelOutputFormat:
     v:          float           # Poission's Ratio
     t:          float           # Uniform thickness of 2D element
 
-def save_geometry_to_excel(geometry: GeometryManager):
+
+
+def export_elastostatic_excel_file(geometry: GeometryManager, properties: dict):
     try:
         # Read all data from geometry manager
         nodes    = geometry.get_nodes()
@@ -61,10 +64,10 @@ def save_geometry_to_excel(geometry: GeometryManager):
                 dzero.append(2 * (i + 1) - 1)  # x DOF (1-based)
                 dzero.append(2 * (i + 1))       # y DOF (1-based)
 
-        # Stub - work on getting textbox data from gui
-        E = 0 #material.get("Young's Modulus", 0)
-        v = 0 #material.get("Poisson's Ratio", 0)
-        t = 0 #material.get("Thickness",       0)
+        E = properties.get("Young's Modulus", 0)
+        v = properties.get("Poisson's Ratio", 0)
+        t = properties.get("Thickness",       0)
+        
         NDU = len(dzero)
 
         # At least one row (matches generate_cutting_tool_data.m / readmatrix layout)
@@ -80,10 +83,8 @@ def save_geometry_to_excel(geometry: GeometryManager):
         )
 
         def pad(lst):
-            if not isinstance(lst, list):
-                lst = [lst]
-            if len(lst) > max_len:
-                return lst[:max_len]
+            if not isinstance(lst, list): lst = [lst]
+            if len(lst) > max_len: return lst[:max_len]
             return lst + [None] * (max_len - len(lst))
 
         # Build full dataframe including ncon

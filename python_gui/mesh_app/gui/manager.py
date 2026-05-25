@@ -14,7 +14,23 @@ from gui.components import *
 from geometry.components.types import *
 from geometry.manager import GeometryManager
 
-from data.exporter import save_geometry_to_excel
+from data.exporter import export_elastostatic_excel_file
+
+e_properties = [
+    ("Young's Modulus", "Pa"),
+    ("Thickness", "m"),
+    ("Poisson's Ratio", ""),
+]
+
+c_properties = [
+    ("Cutting speed", "m/min"),
+    ("Depth of cut", "mm"),
+    ("Feed", "mm/rev"),
+    ("Rake angle", "deg"),
+    ("Thermal Conductivity (k)", "W/m*K"),
+    ("Ambient Temperature", "deg C"),
+]
+
 
 class GUIManager:
 
@@ -35,28 +51,36 @@ class GUIManager:
         viewport = Viewport(self.root, self.geometry, width=800, height=600)
         self.components["viewport"] = viewport
 
-        properties = PropertiesWindow(self.root, width=250, height=600)
-        self.components["properties"] = properties
+        elastostatics_properties = PropertiesWindow(self.root, label='Elastostatic Properties', entries=e_properties, width=250, height=600)
+        cutting_tool_properties = PropertiesWindow(self.root, label='Cutting Tool Properties', entries=c_properties, width=250, height=600)
 
         mesh_select = MeshSelectDropdown(
             self.root,
             on_change=lambda scheme: [self.geometry.set_scheme(scheme), viewport._redraw()]
         )
+
         self.components["mesh_select"] = mesh_select
 
-        # Fixed: removed () from command= so functions are passed, not called
-        clear_button  = tk.Button(self.root, text="Clear viewport",               command=viewport.clear)
-        exp_button    = tk.Button(self.root, text="Export to data_structure.xlsx", command=lambda: save_geometry_to_excel(self.geometry))
-        subd_up_btn   = tk.Button(self.root, text="Subdivide +",                  command=lambda: [self.geometry.subdivide_up(),   viewport._redraw()])
-        subd_down_btn = tk.Button(self.root, text="Subdivide -",                  command=lambda: [self.geometry.subdivide_down(), viewport._redraw()])
+        clear_button  = tk.Button(self.root, text="Clear viewport",                command=viewport.clear)
+        exp_button    = tk.Button(
+            self.root,
+            text="Export to data_structure.xlsx",
+            command=lambda: export_elastostatic_excel_file(
+                self.geometry,
+                elastostatics_properties.get_dict(),
+            ),
+        )
+        subd_up_btn   = tk.Button(self.root, text="Subdivide +",                   command=lambda: [self.geometry.subdivide_up(),   viewport._redraw()])
+        subd_down_btn = tk.Button(self.root, text="Subdivide -",                   command=lambda: [self.geometry.subdivide_down(), viewport._redraw()])
 
-        viewport.place      (x=50,   y=50)
-        properties.place    (x=900,  y=50)
-        mesh_select.place   (x=900,  y=175)
-        subd_up_btn.place   (x=1000, y=360)
-        subd_down_btn.place (x=900,  y=360)
-        clear_button.place  (x=900,  y=400)
-        exp_button.place    (x=900,  y=440)
+        viewport.place                  (x=50,   y=50)
+        elastostatics_properties.place  (x=900,  y=50)
+        cutting_tool_properties.place   (x=900,  y=175)
+        mesh_select.place               (x=900,  y=350)
+        subd_up_btn.place               (x=1000, y=500)
+        subd_down_btn.place             (x=900,  y=500)
+        clear_button.place              (x=938,  y=530)
+        exp_button.place                (x=900,  y=580)
 
     # ---------- RUN ----------
     def run(self):
