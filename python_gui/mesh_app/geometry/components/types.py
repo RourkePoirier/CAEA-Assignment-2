@@ -57,24 +57,5 @@ class Force:
     node:      Node
     angle:     float
     magnitude: float
-    pxy:       bool
-    pz:        bool
-
-## Thermal Boundary Condition Representation
-class ThermalBCType(Enum):
-    HEAT_FLUX    = "Heat Flux"
-    FIXED_TEMP   = "Fixed Temp"
-    INSULATED    = "Insulated"
-
-@dataclass
-class ThermalBC:
-    type:  ThermalBCType
-    value: float = 0.0   # W/m² for flux, °C for fixed temp
-
-BC_COLOURS = {
-    ThermalBCType.HEAT_FLUX:  "#CC0000",   # red
-    ThermalBCType.FIXED_TEMP: "#FF5E00",   # orange
-    ThermalBCType.INSULATED:  "#888888",   # grey
-}
     
 ##########################################################################
