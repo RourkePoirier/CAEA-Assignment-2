@@ -1,0 +1,62 @@
+Date : 2026-05-25 17:18:32
+Directory : c:\source\CAEA-Assignment-2
+Total : 24 files,  1615 codes, 159 comments, 470 blanks, all 2244 lines
+
+Languages
++-------------+------------+------------+------------+------------+------------+
+| language    | files      | code       | comment    | blank      | total      |
++-------------+------------+------------+------------+------------+------------+
+| Python      |         21 |      1,142 |        159 |        344 |      1,645 |
+| Objective-C |          2 |        453 |          0 |        113 |        566 |
+| Markdown    |          1 |         20 |          0 |         13 |         33 |
++-------------+------------+------------+------------+------------+------------+
+
+Directories
++---------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                  | files      | code       | comment    | blank      | total      |
++---------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                     |         24 |      1,615 |        159 |        470 |      2,244 |
+| . (Files)                                                                             |          3 |        473 |          0 |        126 |        599 |
+| python_gui                                                                            |         21 |      1,142 |        159 |        344 |      1,645 |
+| python_gui\mesh_app                                                                   |         15 |        915 |        126 |        263 |      1,304 |
+| python_gui\mesh_app (Files)                                                           |          1 |          8 |          1 |          5 |         14 |
+| python_gui\mesh_app\data                                                              |          1 |         90 |          5 |         18 |        113 |
+| python_gui\mesh_app\geometry                                                          |          6 |        245 |         71 |         85 |        401 |
+| python_gui\mesh_app\geometry (Files)                                                  |          2 |         89 |         18 |         26 |        133 |
+| python_gui\mesh_app\geometry\components                                               |          4 |        156 |         53 |         59 |        268 |
+| python_gui\mesh_app\gui                                                               |          7 |        572 |         49 |        155 |        776 |
+| python_gui\mesh_app\gui (Files)                                                       |          1 |         58 |         10 |         19 |         87 |
+| python_gui\mesh_app\gui\components                                                    |          6 |        514 |         39 |        136 |        689 |
+| python_gui\visualisation_app                                                          |          6 |        227 |         33 |         81 |        341 |
++---------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++---------------------------------------------------------------------------------------+-------------+------------+------------+------------+------------+
+| filename                                                                              | language    | code       | comment    | blank      | total      |
++---------------------------------------------------------------------------------------+-------------+------------+------------+------------+------------+
+| c:\source\CAEA-Assignment-2\Main.m                                                    | Objective-C |        249 |          0 |         62 |        311 |
+| c:\source\CAEA-Assignment-2\README.md                                                 | Markdown    |         20 |          0 |         13 |         33 |
+| c:\source\CAEA-Assignment-2\generate_cutting_tool_data.m                              | Objective-C |        204 |          0 |         51 |        255 |
+| c:\source\CAEA-Assignment-2\python_gui\mesh_app\data\exporter.py                      | Python      |         90 |          5 |         18 |        113 |
+| c:\source\CAEA-Assignment-2\python_gui\mesh_app\geometry\__init__.py                  | Python      |          2 |          0 |          0 |          2 |
+| c:\source\CAEA-Assignment-2\python_gui\mesh_app\geometry\components\__init__.py       | Python      |          3 |          0 |          0 |          3 |
+| c:\source\CAEA-Assignment-2\python_gui\mesh_app\geometry\components\mesh_generator.py | Python      |         80 |         20 |         28 |        128 |
+| c:\source\CAEA-Assignment-2\python_gui\mesh_app\geometry\components\subdivision.py    | Python      |         33 |         24 |         16 |         73 |
+| c:\source\CAEA-Assignment-2\python_gui\mesh_app\geometry\components\types.py          | Python      |         40 |          9 |         15 |         64 |
+| c:\source\CAEA-Assignment-2\python_gui\mesh_app\geometry\manager.py                   | Python      |         87 |         18 |         26 |        131 |
+| c:\source\CAEA-Assignment-2\python_gui\mesh_app\gui\components\__init__.py            | Python      |          4 |          0 |          0 |          4 |
+| c:\source\CAEA-Assignment-2\python_gui\mesh_app\gui\components\force_dialog.py        | Python      |         40 |          0 |         11 |         51 |
+| c:\source\CAEA-Assignment-2\python_gui\mesh_app\gui\components\mesh_dropdown.py       | Python      |         15 |          3 |          7 |         25 |
+| c:\source\CAEA-Assignment-2\python_gui\mesh_app\gui\components\properties_textbox.py  | Python      |         39 |          9 |         18 |         66 |
+| c:\source\CAEA-Assignment-2\python_gui\mesh_app\gui\components\thermal_bc_dialog.py   | Python      |         63 |          0 |         15 |         78 |
+| c:\source\CAEA-Assignment-2\python_gui\mesh_app\gui\components\viewport.py            | Python      |        353 |         27 |         85 |        465 |
+| c:\source\CAEA-Assignment-2\python_gui\mesh_app\gui\manager.py                        | Python      |         58 |         10 |         19 |         87 |
+| c:\source\CAEA-Assignment-2\python_gui\mesh_app\main.py                               | Python      |          8 |          1 |          5 |         14 |
+| c:\source\CAEA-Assignment-2\python_gui\visualisation_app\displacement_window.py       | Python      |         33 |          4 |         12 |         49 |
+| c:\source\CAEA-Assignment-2\python_gui\visualisation_app\gui.py                       | Python      |         63 |         23 |         33 |        119 |
+| c:\source\CAEA-Assignment-2\python_gui\visualisation_app\main.py                      | Python      |          6 |          0 |          3 |          9 |
+| c:\source\CAEA-Assignment-2\python_gui\visualisation_app\strain_window.py             | Python      |         45 |          1 |         10 |         56 |
+| c:\source\CAEA-Assignment-2\python_gui\visualisation_app\stress_window.py             | Python      |         45 |          1 |         10 |         56 |
+| c:\source\CAEA-Assignment-2\python_gui\visualisation_app\temp_window.py               | Python      |         35 |          4 |         13 |         52 |
+| Total                                                                                 |             |      1,615 |        159 |        470 |      2,244 |
++---------------------------------------------------------------------------------------+-------------+------------+------------+------------+------------+

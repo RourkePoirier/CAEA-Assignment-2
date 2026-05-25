@@ -61,7 +61,7 @@ class GUIManager:
 
         self.components["mesh_select"] = mesh_select
 
-        clear_button  = tk.Button(self.root, text="Clear viewport",                command=viewport.clear)
+        clear_button  = tk.Button(self.root, text="Clear viewport", command=viewport.clear)
         exp_button    = tk.Button(
             self.root,
             text="Export to data_structure.xlsx",
@@ -70,8 +70,8 @@ class GUIManager:
                 elastostatics_properties.get_dict(),
             ),
         )
-        subd_up_btn   = tk.Button(self.root, text="Subdivide +",                   command=lambda: [self.geometry.subdivide_up(),   viewport._redraw()])
-        subd_down_btn = tk.Button(self.root, text="Subdivide -",                   command=lambda: [self.geometry.subdivide_down(), viewport._redraw()])
+        subd_up_btn   = tk.Button(self.root, text="Subdivide +", command=lambda: [self.geometry.subdivide_up(),   viewport._redraw()])
+        subd_down_btn = tk.Button(self.root, text="Subdivide -", command=lambda: [self.geometry.subdivide_down(), viewport._redraw()])
 
         viewport.place                  (x=50,   y=50)
         elastostatics_properties.place  (x=900,  y=50)

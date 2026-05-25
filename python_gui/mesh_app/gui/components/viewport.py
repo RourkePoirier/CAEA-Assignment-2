@@ -10,7 +10,7 @@ import tkinter as tk
 from enum import Enum
 
 from gui.components.force_dialog import ForceDialog
-from gui.components.thermal_bc_dialog import ThermalBCDialog
+from gui.components.thermal_bc_dialog import FixedTemperatureDialog
 
 from geometry.components.types import *
 from geometry.manager import GeometryManager
@@ -63,7 +63,7 @@ class Viewport(tk.Frame):
         unit_menu.pack(side="left")
 
         tk.Label(ctrl_bar,
-                 text="CONTROLS:  [R] Reset view   [1] Node   [2] Fixed   [3] Force   [4] Thermal BCs",
+                 text="CONTROLS:  [R] Reset view   [1] Node   [2] Fixed   [3] Force   [4] Fixed temperature",
                  bg="#f0f0f0", fg="#666666", font=("Arial", 8)
                  ).pack(side="left", padx=8)
 
@@ -143,6 +143,10 @@ class Viewport(tk.Frame):
         self._draw_elements()
         self._draw_forces()
         self._draw_nodes()
+        self._draw_thermal_bcs()
+
+    def _redraw_thermal_overlay(self):
+        self.canvas.delete("thermal")
         self._draw_thermal_bcs()
 
     def _draw_grid(self):
@@ -229,7 +233,11 @@ class Viewport(tk.Frame):
 
     def _draw_tooltip(self, px, py, node):
         self.canvas.delete("tooltip")
-        text    = f"x={self._round_metres(node.x)}, y={self._round_metres(node.y)}\n{node.type.name}"
+        thermal = "insulated" if node.temperature is None else f"{node.temperature:.1f} °C"
+        text    = (
+            f"x={self._round_metres(node.x)}, y={self._round_metres(node.y)}\n"
+            f"{node.type.name}\n{thermal}"
+        )
         text_id = self.canvas.create_text(px+10, py-10, text=text, anchor="sw", tags="tooltip")
         bbox = self.canvas.bbox(text_id)
         if bbox:
@@ -240,45 +248,43 @@ class Viewport(tk.Frame):
             self.canvas.tag_raise(text_id)
 
     def _draw_thermal_bcs(self):
-        nodes = self.geometry.get_nodes()
-        if not nodes: return
+        base_nodes = self.geometry.base_nodes
+        if not base_nodes:
+            return
 
         for edge in self.geometry.get_boundary_edges():
-            bc     = self.geometry.get_thermal_bc(edge)
-            is_hov = (edge == self._hovered_edge and self.tool == Tool.THERMAL)
+            na, nb = edge.get_nodes(base_nodes)
+            edge_temp = self.geometry.get_edge_fixed_temperature(edge)
+            has_fixed = edge_temp is not None
+            is_hov = edge == self._hovered_edge and self.tool == Tool.THERMAL
 
-            # Colour — hovered unset edge gets a highlight, set edges get their BC colour
-            if is_hov and bc is None:
-                colour = "#FFA500"   # orange hover
-                width  = 3
-            elif bc is not None:
-                colour = BC_COLOURS[bc.type]
-                width  = 3 if is_hov else 2
-            else: continue             # unset + not hovered → don't draw anything
+            if not has_fixed and not is_hov: continue
 
-            a, b = edge.node_indices
-
-            # boundary edges index into base_nodes, not subdivided nodes
-            na = self.geometry.base_nodes[a]
-            nb = self.geometry.base_nodes[b]
+            colour = THERMAL_FIXED_TEMP_COLOUR if has_fixed else "#FFA500"
+            width = 3 if is_hov else 2
             x0, y0 = self.world_to_screen(na.x, na.y)
             x1, y1 = self.world_to_screen(nb.x, nb.y)
-
             self.canvas.create_line(x0, y0, x1, y1, fill=colour, width=width, tags="thermal")
 
-            # Label — midpoint
-            mx, my = (x0+x1)/2, (y0+y1)/2
-            if bc is not None:
-                label = f"{bc.type.value}\n{bc.value:.0f}" if bc.value else bc.type.value
-                self.canvas.create_text(mx, my - 10, text=label, fill=colour, font=("Arial", 8, "bold"), tags="thermal")
+            if has_fixed:
+                mx, my = (x0 + x1) / 2, (y0 + y1) / 2
+                label = f"{edge_temp:.0f} °C"
+                self.canvas.create_text(
+                    mx, my - 10, text=label, fill=colour,
+                    font=("Arial", 8, "bold"), tags="thermal",
+                )
 
     def _open_thermal_bc_dialog(self, edge: Edge) -> None:
-        dlg = ThermalBCDialog(self, existing=self.geometry.get_thermal_bc(edge))
-        if dlg.result is None: return
-        if dlg.result == "clear": self.geometry.thermal_bcs.pop(edge, None)
-        else: self.geometry.set_thermal_bc(edge, dlg.result)
-        self._redraw()
-        
+        existing = self.geometry.get_edge_fixed_temperature(edge)
+        dlg = FixedTemperatureDialog(self.winfo_toplevel(), existing=existing)
+        if dlg.result is None:
+            return
+        if dlg.result == "clear":
+            self.geometry.clear_edge_fixed_temperature(edge)
+        else:
+            self.geometry.set_edge_fixed_temperature(edge, dlg.result)
+        self._redraw_thermal_overlay()
+
     ############################################################################
     # ---------- INPUT HANDLERS ----------
     ############################################################################
@@ -302,8 +308,11 @@ class Viewport(tk.Frame):
                 self.geometry.add_force(Force(node, magnitude=dlg.magnitude, angle=dlg.angle, pxy=dlg.is_pxy, pz=dlg.is_pz))
 
             case Tool.THERMAL:
-                if self._hovered_edge is None: return
-                self._open_thermal_bc_dialog(self._hovered_edge)
+                edge = self._hovered_edge or self._find_nearest_edge(event.x, event.y)
+                if edge is None:
+                    return
+                self._open_thermal_bc_dialog(edge)
+                return
 
         self.geometry.update()
         self._redraw()
@@ -332,7 +341,7 @@ class Viewport(tk.Frame):
             prev = self._hovered_edge
             self._hovered_edge = self._find_nearest_edge(event.x, event.y)
             if self._hovered_edge != prev:
-                self._redraw()
+                self._redraw_thermal_overlay()
 
     def _on_drag_start(self, event):
         self._drag_start = (event.x, event.y)
@@ -400,9 +409,12 @@ class Viewport(tk.Frame):
 
         return best
     
-    def _set_tool(self, t: Tool)  -> None: 
+    def _set_tool(self, t: Tool) -> None:
         self.tool = t
-        self._selected_tool.set(t.name) 
+        self._selected_tool.set(t.name)
+        if t != Tool.THERMAL:
+            self._hovered_edge = None
+            self._redraw_thermal_overlay()
 
     def _reset_view(self) -> None:
         self.scale    = self._unit["scale"]
@@ -420,4 +432,6 @@ class Viewport(tk.Frame):
 
     def clear(self) -> None:
         self.geometry.clear()
+        self._hovered_edge = None
+        self._set_tool(Tool.NODE)
         self._redraw()
