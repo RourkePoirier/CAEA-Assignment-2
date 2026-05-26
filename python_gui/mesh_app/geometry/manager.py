@@ -80,16 +80,13 @@ class GeometryManager:
         return math.hypot(nb.x - na.x, nb.y - na.y)
 
     def _recompute_node_temperatures(self) -> None:
-        """Length-weighted blend at shared nodes from adjacent fixed-temperature edges."""
         self._clear_all_temperatures()
-        if not self.base_nodes:
-            return
+        if not self.base_nodes: return
 
         contributions: dict[tuple[float, float], list[tuple[float, float]]] = {}
         for edge in self.boundary_edges:
             temp = self.edge_fixed_temps.get(self._edge_pos_key(edge, self.base_nodes))
-            if temp is None:
-                continue
+            if temp is None: continue
             length = self._edge_length(edge)
             na, nb = edge.get_nodes(self.base_nodes)
             for pos in ((na.x, na.y), (nb.x, nb.y)):
@@ -97,23 +94,21 @@ class GeometryManager:
 
         for node in self.base_nodes:
             pairs = contributions.get((node.x, node.y))
-            if not pairs:
-                continue
+            if not pairs: continue
             total_len = sum(length for _, length in pairs)
-            if total_len <= 0:
-                continue
+            if total_len <= 0: continue
             blended = sum(temp * length for temp, length in pairs) / total_len
             self._set_node_temperature(node, blended)
 
     def _set_node_temperature(self, node: Node, temperature: float | None) -> None:
-        node.temperature = temperature
+        node.temp_value = temperature
         for placed in self.placed_nodes:
             if placed.x == node.x and placed.y == node.y:
-                placed.temperature = temperature
+                placed.temp_value = temperature
 
     def _clear_all_temperatures(self) -> None:
         for node in (*self.base_nodes, *self.placed_nodes):
-            node.temperature = None
+            node.temp_value = None
 
     def _edge_pos_key(self, edge: Edge, nodes: list[Node]) -> tuple[tuple[float, float], tuple[float, float]]:
         na, nb = edge.get_nodes(nodes)

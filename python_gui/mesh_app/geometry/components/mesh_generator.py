@@ -51,7 +51,7 @@ def _radial(nodes: List[Node]) -> tuple[List[Node], List[Element]]:
     hull        = ConvexHull(points)
     hull_indices = list(hull.vertices) + [hull.vertices[0]]  # close loop
 
-    centroid     = Node(points[:, 0].mean(), points[:, 1].mean(), NodeType.NORMAL)
+    centroid     = Node(points[:, 0].mean(), points[:, 1].mean(), NodeType.NODE)
     working_nodes = list(nodes) + [centroid]
     centroid_idx  = len(working_nodes) - 1
 
@@ -98,7 +98,7 @@ def _advancing_front(nodes: List[Node]) -> tuple[List[Node], List[Element]]:
             interior_pts.append(mid)
 
     all_pts       = np.array(interior_pts)
-    working_nodes = [Node(p[0], p[1], NodeType.NORMAL) for p in all_pts]
+    working_nodes = [Node(p[0], p[1], NodeType.NODE) for p in all_pts]
 
     tri      = Delaunay(all_pts)
     elements: List[Element] = []
