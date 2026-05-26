@@ -33,8 +33,7 @@ class Node:
     x:              float
     y:              float
     type:           NodeType
-    thermal_type:   ThermalType | None = None
-    temp_value:     float | None = None
+    temp:     float | None = None
     id:             int = field(default_factory=lambda: id(object()))
 
     def __hash__(self):
@@ -54,6 +53,7 @@ class Element:
 @dataclass(frozen=True)
 class Edge:
     node_indices: tuple[int, int]
+    thermal_type: ThermalType | None = None
 
     def get_nodes(self, nodes: list[Node]) -> tuple[Node, Node]:
         a, b = self.node_indices
