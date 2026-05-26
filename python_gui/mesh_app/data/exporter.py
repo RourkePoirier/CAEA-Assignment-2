@@ -3,10 +3,11 @@ import math
 from geometry.components.types import *
 from geometry.manager import GeometryManager
 
-ELASTOSTATICS_FILENAME = 'data_structure.xlsx'
+EXCEL_FILENAME = 'data_structure.xlsx'
 
 ## REFERENCE
-class ExcelOutputFormat:
+# Parameters that are required will throw an error if missing
+class Sheet1:
     n_element:  int             # Number of Triangular Elements
     n_nodes:    int             # Number of Nodes
     ncon1:      list[int]       # Nodal Connectivity Matrix 
@@ -23,8 +24,7 @@ class ExcelOutputFormat:
     t:          float           # Uniform thickness of 2D element
 
 
-
-def export_elastostatic_excel_file(geometry: GeometryManager, properties: dict):
+def export_excel_file(geometry: GeometryManager, properties: dict):
     try:
         # Read all data from geometry manager
         nodes    = geometry.get_nodes()
@@ -106,7 +106,7 @@ def export_elastostatic_excel_file(geometry: GeometryManager, properties: dict):
         })    
 
         print(df_full.to_string())
-        df_full.to_excel(ELASTOSTATICS_FILENAME, index=False)
+        df_full.to_excel(EXCEL_FILENAME, index=False)
 
     except Exception as e:
         raise e

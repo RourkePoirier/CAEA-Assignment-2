@@ -17,9 +17,9 @@ class MeshScheme(StrEnum):
     NOTHING         = "Nothing"
 
 class NodeType(Enum):
-    NORMAL = 1 
-    FIXED  = 2
-    FORCE  = 3
+    NODE = 1 
+    FIXED_NODE  = 2
+    FORCE_NODE  = 3
 
 ##########################################################################
 
@@ -60,5 +60,7 @@ class Force:
     magnitude: float
 
 THERMAL_FIXED_TEMP_COLOUR = "#FF5E00"
+RAKE_COLOUR  = "#AA00FF"
+FLANK_COLOUR = "#FF6600"
 
 ##########################################################################

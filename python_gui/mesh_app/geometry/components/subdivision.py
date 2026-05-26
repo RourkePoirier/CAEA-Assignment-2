@@ -11,9 +11,9 @@ Subdivides each triangle into 4 smaller triangles, repeated subd_level times.
 Each triangle:
 
     i0                   i0
-    /\          ->       /\
+    /\          ->       /\ 
    /  \                m20--m01
-  /    \               /\  /\
+  /    \               /\  /\ 
  i2----i1            i2--m12--i1
 
 """
@@ -41,7 +41,7 @@ def subdivide_triangular_mesh(nodes: List[Node], elements: List[Element], subd_l
             midpoint = Node(
                 x    = (a.x + b.x) / 2,
                 y    = (a.y + b.y) / 2,
-                type = a.type if a.type == b.type else NodeType.NORMAL
+                type = a.type if a.type == b.type else NodeType.NODE
             )
 
             # Register midpoint and cache its index

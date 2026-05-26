@@ -32,8 +32,11 @@ class GeometryManager:
 
         # Outer mesh edges (insulated unless endpoint nodes have temperature set)
         self.boundary_edges: list[Edge] = []
+
         # Fixed temperature BC per boundary edge, keyed by sorted endpoint positions
         self.edge_fixed_temps: dict[tuple, float] = {}
+        self.rake_edge:  Edge | None = None
+        self.flank_edge: Edge | None = None
 
         self.subd_level: int = 0
 
@@ -150,6 +153,8 @@ class GeometryManager:
         self.elements.clear()
         self.boundary_edges.clear()
         self.edge_fixed_temps.clear()
+        self.rake_edge  = None
+        self.flank_edge = None
         self.subd_level = 0
 
     ## Update — single method that recomputes everything from the manually placed_nodes

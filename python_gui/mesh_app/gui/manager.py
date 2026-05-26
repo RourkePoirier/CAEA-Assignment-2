@@ -14,7 +14,7 @@ from gui.components import *
 from geometry.components.types import *
 from geometry.manager import GeometryManager
 
-from data.exporter import export_elastostatic_excel_file
+from data.exporter import export_excel_file
 
 e_properties = [
     ("Young's Modulus", "Pa"),
@@ -27,8 +27,12 @@ c_properties = [
     ("Depth of cut", "mm"),
     ("Feed", "mm/rev"),
     ("Rake angle", "deg"),
-    ("Thermal Conductivity (k)", "W/m*K"),
-    ("Ambient Temperature", "deg C"),
+    ("Chip Thickness (a2)", "mm"),
+    ("Chip tool contact length (L)", "mm"),
+]
+
+t_properties = [
+    ("")
 ]
 
 
@@ -65,10 +69,7 @@ class GUIManager:
         exp_button    = tk.Button(
             self.root,
             text="Export to data_structure.xlsx",
-            command=lambda: export_elastostatic_excel_file(
-                self.geometry,
-                elastostatics_properties.get_dict(),
-            ),
+            command=lambda: export_excel_file(self.geometry, elastostatics_properties.get_dict()),
         )
         subd_up_btn   = tk.Button(self.root, text="Subdivide +", command=lambda: [self.geometry.subdivide_up(),   viewport._redraw()])
         subd_down_btn = tk.Button(self.root, text="Subdivide -", command=lambda: [self.geometry.subdivide_down(), viewport._redraw()])

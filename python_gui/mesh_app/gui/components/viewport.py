@@ -16,10 +16,11 @@ from geometry.components.types import *
 from geometry.manager import GeometryManager
 
 UNITS = {
-    "μm": dict(label="μm", mpu=1e-6, grid_step=1e-5, scale=1e8),
-    "mm": dict(label="mm", mpu=1e-3, grid_step=1e-3, scale=1e3),
-    "cm": dict(label="cm", mpu=1e-2, grid_step=1e-2, scale=1e2),
-    "m":  dict(label="m",  mpu=1.0,  grid_step=1e-2, scale=1e2),
+    "nm": dict(label="nm", mpu=1e-9, scale=1e9),
+    "μm": dict(label="μm", mpu=1e-6, scale=1e6),
+    "mm": dict(label="mm", mpu=1e-3, scale=1e3),
+    "cm": dict(label="cm", mpu=1e-2, scale=1e2),
+    "m":  dict(label="m",  mpu=1.0,  scale=1e0),
 }
 
 DEFAULT_UNIT   = "mm"
@@ -32,6 +33,8 @@ class Tool(Enum):
     FIXED      = 2
     FORCE      = 3
     THERMAL    = 4
+    RAKE       = 5
+    FLANK      = 6
 
 class Viewport(tk.Frame):
 
@@ -42,17 +45,20 @@ class Viewport(tk.Frame):
 
         self._unit_key = DEFAULT_UNIT
         self._unit     = UNITS[DEFAULT_UNIT]
-        self.grid_step = self._unit["grid_step"]
+        self._unit_lock = False
+        self.grid_step = 1e-3
         self.scale     = self._unit["scale"]
         self.x_offset  = width  / 2
         self.y_offset  = height / 2
         self._init_w   = width
         self._init_h   = height
-        self.tool        = Tool.NODE
+        self.tool      = Tool.NODE
+        self._selected_tool = tk.StringVar(value=self.tool.name)
+        self._hovered_node: Node | None = None
         self._hovered_edge: Edge | None = None
         self._drag_start = None
 
-        # Toolbar
+        # Toolbar - top row
         ctrl_bar = tk.Frame(self, bg="#f0f0f0", pady=2)
         ctrl_bar.pack(fill="x", side="top")
 
@@ -63,21 +69,25 @@ class Viewport(tk.Frame):
         unit_menu.pack(side="left")
 
         tk.Label(ctrl_bar,
-                 text="CONTROLS:  [R] Reset view   [1] Node   [2] Fixed   [3] Force   [4] Fixed temperature",
-                 bg="#f0f0f0", fg="#666666", font=("Arial", 8)
-                 ).pack(side="left", padx=8)
-
-        self._selected_tool = tk.StringVar(value=self.tool.name)
-
-        tk.Label(ctrl_bar,
-                 textvariable=self._selected_tool,
-                 font=("Arial", 12, "bold")
-                 ).pack(side="right", padx=8)
+                textvariable=self._selected_tool,
+                font=("Arial", 12, "bold"),
+                bg="#f0f0f0"
+                ).pack(side="right", padx=(0, 8))
         
         tk.Label(ctrl_bar,
-                 text="Current Tool: ",
-                 font=("Arial", 12, "bold")
-                 ).pack(side="right", padx=8)
+                text="Selected Tool: ",
+                font=("Arial", 12, "bold"),
+                bg="#f0f0f0"
+                ).pack(side="right", padx=(0, 4))
+
+        # Hint row
+        hint_bar = tk.Frame(self, bg="#f0f0f0")
+        hint_bar.pack(fill="x", side="top")
+
+        tk.Label(hint_bar,
+                text="CONTROLS:  [R] Reset view   [1] Node   [2] Fixed   [3] Force   [4] Fixed temperature   [5] Rake face   [6] Flank face   [Double-click] Delete",
+                bg="#f0f0f0", fg="#666666", font=("Arial", 8)
+                ).pack(side="left", padx=8, pady=(0, 2))
         
 
         # Canvas
@@ -96,6 +106,8 @@ class Viewport(tk.Frame):
         self.bind_all("2", lambda e: self._set_tool(Tool.FIXED))
         self.bind_all("3", lambda e: self._set_tool(Tool.FORCE))
         self.bind_all("4", lambda e: self._set_tool(Tool.THERMAL))
+        self.bind_all("5", lambda e: self._set_tool(Tool.RAKE))
+        self.bind_all("6", lambda e: self._set_tool(Tool.FLANK))
         self.bind_all("r", lambda e: self._reset_view())
 
         self._redraw()
@@ -106,16 +118,36 @@ class Viewport(tk.Frame):
 
     def _format_unit(self, metres):
         value = metres / self._unit["mpu"]
-        return f"{round(value, 10):.6g}{self._unit['label']}"
+        return f"{round(value, 10):.0f}{self._unit['label']}"
 
     def _round_metres(self, metres):
-        return f"{round(metres, 10):.8g}m"
+        return f"{round(metres, 10):.9f}m"
 
     def _on_unit_change(self, key):
-        self._unit_key = key
-        self._unit     = UNITS[key]
-        self.grid_step = self._unit["grid_step"]
+        self._unit_key  = key
+        self._unit      = UNITS[key]
+        self._unit_lock = True   # user pinned a unit; don't auto-switch
         self._redraw()
+
+    def _auto_unit(self):
+        """Pick the most readable unit for the current scale and compute grid_step."""
+        if not self._unit_lock:
+            # Switch to the unit whose scale is closest to current scale
+            best = min(UNITS.items(), key=lambda kv: abs(math.log(self.scale / kv[1]["scale"])))
+            if best[0] != self._unit_key:
+                self._unit_key = best[0]
+                self._unit     = UNITS[best[0]]
+                self._unit_var.set(best[0])
+
+        mpu = self._unit["mpu"]
+
+        # Find the smallest power-of-10 step (in metres) that renders >= MIN_GRID_PX pixels
+        exp  = math.floor(math.log10(MIN_GRID_PX / self.scale))
+        step = 10 ** exp
+        while step * self.scale < MIN_GRID_PX:
+            step *= 10
+
+        self.grid_step = step
 
     ############################################################################
     # ---------- TRANSFORMS ----------
@@ -138,16 +170,17 @@ class Viewport(tk.Frame):
     ############################################################################
 
     def _redraw(self):
+        self._auto_unit()
         self.canvas.delete("all")
         self._draw_grid()
         self._draw_elements()
         self._draw_forces()
         self._draw_nodes()
-        self._draw_thermal_bcs()
+        self._draw_defined_edges()
 
     def _redraw_thermal_overlay(self):
         self.canvas.delete("thermal")
-        self._draw_thermal_bcs()
+        self._draw_defined_edges()
 
     def _draw_grid(self):
         w = self.canvas.winfo_width()
@@ -194,15 +227,15 @@ class Viewport(tk.Frame):
             if abs(y) < step * 0.01: continue
             _, py = self.world_to_screen(0, y)
             self.canvas.create_text(px0 + 2, py, text=self._format_unit(y), anchor="w", font=("Arial", 7), fill="#888888")
-
+   
     def _draw_nodes(self):
         r = NODE_RADIUS_PX
         for node in self.geometry.get_placed_nodes():
             px, py = self.world_to_screen(node.x, node.y)
             match node.type:
-                case NodeType.NORMAL: self.canvas.create_oval(px-r, py-r, px+r, py+r, outline="black", width=2)
-                case NodeType.FIXED:  self.canvas.create_oval(px-r, py-r, px+r, py+r, fill="black")
-                case NodeType.FORCE:  self.canvas.create_oval(px-r, py-r, px+r, py+r, outline="red", width=2)
+                case NodeType.NODE: self.canvas.create_oval(px-r, py-r, px+r, py+r, outline="black", width=2)
+                case NodeType.FIXED_NODE:  self.canvas.create_oval(px-r, py-r, px+r, py+r, fill="black")
+                case NodeType.FORCE_NODE:  self.canvas.create_oval(px-r, py-r, px+r, py+r, outline="red", width=2)
 
     def _draw_forces(self):
         for f in self.geometry.get_forces():
@@ -210,16 +243,11 @@ class Viewport(tk.Frame):
             rad = math.radians(f.angle)
             x1  = x0 + math.cos(rad) * FORCE_ARROW_PX
             y1  = y0 - math.sin(rad) * FORCE_ARROW_PX
-            x2  = x1 + math.cos(rad) * FORCE_ARROW_PX
-            y2  = y1 - math.sin(rad) * FORCE_ARROW_PX
-
             self.canvas.create_line(x0, y0, x1, y1, arrow=tk.LAST, fill="red", width=2)
+            self.canvas.create_text(x1 + math.cos(rad) * 8, y1 - math.sin(rad) * 8,
+                                    text=f"{f.magnitude}N", fill="red",
+                                    font=("Arial", 9, "bold"), anchor="sw")
             
-            if f.pxy: self.canvas.create_text(x1, y1, text="Pxy", fill="red", font=("Arial", 12, "bold"), anchor="sw")
-            if f.pz: self.canvas.create_text(x1, y1, text="Pz", fill="red", font=("Arial", 12, "bold"), anchor="sw")
-
-            self.canvas.create_text(x2, y2, text=f"{f.magnitude}N", fill="red", font=("Arial", 10), anchor="sw")
-
     def _draw_elements(self):
         nodes = self.geometry.get_nodes()
         for e in self.geometry.get_elements():
@@ -233,10 +261,10 @@ class Viewport(tk.Frame):
 
     def _draw_tooltip(self, px, py, node):
         self.canvas.delete("tooltip")
-        thermal = "insulated" if node.temperature is None else f"{node.temperature:.1f} °C"
+        thermal = "Insulated" if node.temperature is None else f"{node.temperature:.1f} °C"
         text    = (
             f"x={self._round_metres(node.x)}, y={self._round_metres(node.y)}\n"
-            f"{node.type.name}\n{thermal}"
+            f"type={node.type.name}\ntemp={thermal}"
         )
         text_id = self.canvas.create_text(px+10, py-10, text=text, anchor="sw", tags="tooltip")
         bbox = self.canvas.bbox(text_id)
@@ -247,33 +275,41 @@ class Viewport(tk.Frame):
             )
             self.canvas.tag_raise(text_id)
 
-    def _draw_thermal_bcs(self):
+    def _draw_defined_edges(self):
         base_nodes = self.geometry.base_nodes
-        if not base_nodes:
-            return
+        if not base_nodes: return
+
+        # Node hover highlight
+        if self._hovered_node:
+            px, py = self.world_to_screen(self._hovered_node.x, self._hovered_node.y)
+            r = NODE_RADIUS_PX
+            self.canvas.create_oval(px-r-3, py-r-3, px+r+3, py+r+3,
+                                    outline="#FFD700", width=2, tags="thermal")
+
+        edge_styles = [
+            (self.geometry.rake_edge,  RAKE_COLOUR,  "RAKE",  2),
+            (self.geometry.flank_edge, FLANK_COLOUR, "FLANK", 2),
+        ]
 
         for edge in self.geometry.get_boundary_edges():
-            na, nb = edge.get_nodes(base_nodes)
             edge_temp = self.geometry.get_edge_fixed_temperature(edge)
-            has_fixed = edge_temp is not None
-            is_hov = edge == self._hovered_edge and self.tool == Tool.THERMAL
+            is_hov    = edge == self._hovered_edge
 
-            if not has_fixed and not is_hov: continue
+            if edge_temp is not None:
+                edge_styles.append((edge, THERMAL_FIXED_TEMP_COLOUR, f"{edge_temp:.0f} °C", 2))
+            if is_hov:
+                edge_styles.append((edge, "#FFD700", None, 4))
 
-            colour = THERMAL_FIXED_TEMP_COLOUR if has_fixed else "#FFA500"
-            width = 3 if is_hov else 2
+        for edge, colour, label, width in edge_styles:
+            if edge is None: continue
+            na, nb = edge.get_nodes(base_nodes)
             x0, y0 = self.world_to_screen(na.x, na.y)
             x1, y1 = self.world_to_screen(nb.x, nb.y)
             self.canvas.create_line(x0, y0, x1, y1, fill=colour, width=width, tags="thermal")
-
-            if has_fixed:
+            if label:
                 mx, my = (x0 + x1) / 2, (y0 + y1) / 2
-                label = f"{edge_temp:.0f} °C"
-                self.canvas.create_text(
-                    mx, my - 10, text=label, fill=colour,
-                    font=("Arial", 8, "bold"), tags="thermal",
-                )
-
+                self.canvas.create_text(mx, my - 10, text=label, fill=colour, font=("Arial", 8, "bold"), tags="thermal")
+                
     def _open_thermal_bc_dialog(self, edge: Edge) -> None:
         existing = self.geometry.get_edge_fixed_temperature(edge)
         dlg = FixedTemperatureDialog(self.winfo_toplevel(), existing=existing)
@@ -291,43 +327,73 @@ class Viewport(tk.Frame):
 
     def _on_left_click(self, event):
         x, y = self.snap(event.x, event.y)
-        if self.geometry.node_exists_at(x, y): return
 
         match self.tool:
             case Tool.NODE:
-                self.geometry.add_node(Node(x, y, NodeType.NORMAL))
+                if self.geometry.node_exists_at(x, y): return
+                self.geometry.add_node(Node(x, y, NodeType.NODE))
 
             case Tool.FIXED:
-                self.geometry.add_node(Node(x, y, NodeType.FIXED))
+                if self.geometry.node_exists_at(x, y): return
+                self.geometry.add_node(Node(x, y, NodeType.FIXED_NODE))
 
             case Tool.FORCE:
+                if self.geometry.node_exists_at(x, y): return
                 dlg = ForceDialog(self, "Define Force")
                 if dlg.magnitude is None or dlg.angle is None: return
-                node = Node(x, y, NodeType.FORCE)
+                node = Node(x, y, NodeType.FORCE_NODE)
                 self.geometry.add_node(node)
-                self.geometry.add_force(Force(node, magnitude=dlg.magnitude, angle=dlg.angle, pxy=dlg.is_pxy, pz=dlg.is_pz))
+                self.geometry.add_force(Force(node, magnitude=dlg.magnitude, angle=dlg.angle))
 
             case Tool.THERMAL:
                 edge = self._hovered_edge or self._find_nearest_edge(event.x, event.y)
-                if edge is None:
-                    return
+                if edge is None: return
                 self._open_thermal_bc_dialog(edge)
+                return
+
+            case Tool.RAKE:
+                edge = self._hovered_edge or self._find_nearest_edge(event.x, event.y)
+                if edge is None: return
+                if edge == self.geometry.flank_edge: self.geometry.flank_edge = None
+                self.geometry.rake_edge = edge
+                self._redraw()
+                return
+
+            case Tool.FLANK:
+                edge = self._hovered_edge or self._find_nearest_edge(event.x, event.y)
+                if edge is None: return
+                if edge == self.geometry.rake_edge: self.geometry.rake_edge = None
+                self.geometry.flank_edge = edge
+                self._redraw()
                 return
 
         self.geometry.update()
         self._redraw()
 
     def _on_double_left_click(self, event):
+        if self._hovered_edge is not None:
+            edge = self._hovered_edge
+            self.geometry.clear_edge_fixed_temperature(edge)
+            if edge == self.geometry.rake_edge:  self.geometry.rake_edge  = None
+            if edge == self.geometry.flank_edge: self.geometry.flank_edge = None
+            self._hovered_edge = None
+            self._redraw_thermal_overlay()
+            return
+
         x, y = self.snap(event.x, event.y)
         self.geometry.remove_node_at(x, y)
+        self._hovered_node = None
         self.geometry.update()
         self._redraw()
 
     def _on_mouse_move(self, event):
+        prev_node = self._hovered_node
+        prev_edge = self._hovered_edge
 
-        node = self._find_nearest_node(event.x, event.y)
+        self._hovered_node = self._find_nearest_node(event.x, event.y)
+        self._hovered_edge = self._find_nearest_edge(event.x, event.y) if not self._hovered_node else None
 
-        if node: self._draw_tooltip(event.x, event.y, node)
+        if self._hovered_node: self._draw_tooltip(event.x, event.y, self._hovered_node)
         else:
             x, y = self.snap(event.x, event.y)
             self.canvas.delete("tooltip")
@@ -337,11 +403,7 @@ class Viewport(tk.Frame):
                 anchor="sw", tags="tooltip", fill="#888888", font=("Arial", 8)
             )
 
-        if self.tool == Tool.THERMAL:
-            prev = self._hovered_edge
-            self._hovered_edge = self._find_nearest_edge(event.x, event.y)
-            if self._hovered_edge != prev:
-                self._redraw_thermal_overlay()
+        if self._hovered_node != prev_node or self._hovered_edge != prev_edge: self._redraw_thermal_overlay()
 
     def _on_drag_start(self, event):
         self._drag_start = (event.x, event.y)
@@ -359,6 +421,7 @@ class Viewport(tk.Frame):
         self.x_offset = event.x - factor * (event.x - self.x_offset)
         self.y_offset = event.y - factor * (event.y - self.y_offset)
         self.scale   *= factor
+        self._unit_lock = False
         self._redraw()
 
     ############################################################################
@@ -412,9 +475,7 @@ class Viewport(tk.Frame):
     def _set_tool(self, t: Tool) -> None:
         self.tool = t
         self._selected_tool.set(t.name)
-        if t != Tool.THERMAL:
-            self._hovered_edge = None
-            self._redraw_thermal_overlay()
+        self._redraw_thermal_overlay()
 
     def _reset_view(self) -> None:
         self.scale    = self._unit["scale"]
@@ -433,5 +494,6 @@ class Viewport(tk.Frame):
     def clear(self) -> None:
         self.geometry.clear()
         self._hovered_edge = None
+        self._hovered_node = None
         self._set_tool(Tool.NODE)
         self._redraw()
