@@ -12,6 +12,7 @@ from enum import Enum, StrEnum
 
 class MeshScheme(StrEnum):
     DELAUNAY        = "Delaunay"
+    AMR             = "AMR"
     RADIAL          = "Radial"
     ADVANCING_FRONT = "Advancing Front"
     NOTHING         = "Nothing"
