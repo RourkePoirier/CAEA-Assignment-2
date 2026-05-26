@@ -16,23 +16,25 @@ from geometry.manager import GeometryManager
 
 from data.exporter import export_excel_file
 
-e_properties = [
+m_properties = [
     ("Young's Modulus", "Pa"),
     ("Thickness", "m"),
     ("Poisson's Ratio", ""),
 ]
 
-c_properties = [
+p_properties = [
     ("Cutting speed", "m/min"),
     ("Depth of cut", "mm"),
     ("Feed", "mm/rev"),
-    ("Rake angle", "deg"),
-    ("Chip Thickness (a2)", "mm"),
-    ("Chip tool contact length (L)", "mm"),
+    ("Cutting force (Pz)", "N"),
+    ("Feed Force (Pxy)", "N"),
 ]
 
 t_properties = [
-    ("")
+    ("Thermal Conductivity X (Kx)", "W/m*K"),
+    ("Thermal Conductivity Y (Ky)", "W/m*K"),
+    ("Fixed Temperature (T)", "deg C"),
+    ("Ambient Temperature (T inf)", "deg C"),
 ]
 
 
@@ -55,8 +57,9 @@ class GUIManager:
         viewport = Viewport(self.root, self.geometry, width=800, height=600)
         self.components["viewport"] = viewport
 
-        elastostatics_properties = PropertiesWindow(self.root, label='Elastostatic Properties', entries=e_properties, width=250, height=600)
-        cutting_tool_properties = PropertiesWindow(self.root, label='Cutting Tool Properties', entries=c_properties, width=250, height=600)
+        mechanical_properties = PropertiesWindow(self.root, label='Mechanical Properties', entries=m_properties, width=250, height=600)
+        process_properties = PropertiesWindow(self.root, label='Process Properties', entries=p_properties, width=250, height=600)
+        thermal_properties = PropertiesWindow(self.root, label='Thermal Properties', entries=t_properties, width=250, height=600)
 
         mesh_select = MeshSelectDropdown(
             self.root,
@@ -69,19 +72,20 @@ class GUIManager:
         exp_button    = tk.Button(
             self.root,
             text="Export to data_structure.xlsx",
-            command=lambda: export_excel_file(self.geometry, elastostatics_properties.get_dict()),
+            command=lambda: export_excel_file(self.geometry),
         )
         subd_up_btn   = tk.Button(self.root, text="Subdivide +", command=lambda: [self.geometry.subdivide_up(),   viewport._redraw()])
         subd_down_btn = tk.Button(self.root, text="Subdivide -", command=lambda: [self.geometry.subdivide_down(), viewport._redraw()])
 
         viewport.place                  (x=50,   y=50)
-        elastostatics_properties.place  (x=900,  y=50)
-        cutting_tool_properties.place   (x=900,  y=175)
-        mesh_select.place               (x=900,  y=350)
-        subd_up_btn.place               (x=1000, y=500)
-        subd_down_btn.place             (x=900,  y=500)
-        clear_button.place              (x=938,  y=530)
-        exp_button.place                (x=900,  y=580)
+        mechanical_properties.place     (x=900,  y=50)
+        process_properties.place        (x=900,  y=150)
+        thermal_properties.place        (x=900,  y=300)
+        mesh_select.place               (x=900,  y=450)
+        subd_up_btn.place               (x=1000, y=550)
+        subd_down_btn.place             (x=900,  y=550)
+        clear_button.place              (x=938,  y=580)
+        exp_button.place                (x=900,  y=630)
 
     # ---------- RUN ----------
     def run(self):

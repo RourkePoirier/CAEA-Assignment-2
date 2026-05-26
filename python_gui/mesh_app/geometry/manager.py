@@ -10,7 +10,7 @@ import math
 from geometry.components import *
 from collections import Counter
 
-MAX_SUBDIVISION_LEVEL = 5
+MAX_SUBDIVISION_LEVEL = 3
 
 class GeometryManager:
 
@@ -123,7 +123,6 @@ class GeometryManager:
         return dict(self.edge_fixed_temps)
 
     def _restore_edge_temperature_bcs(self, preserved: dict[tuple, float]) -> None:
-        """Re-apply edge BCs that still exist after mesh regen, then blend node temperatures."""
         surviving = {self._edge_pos_key(edge, self.base_nodes) for edge in self.boundary_edges}
         self.edge_fixed_temps = {k: v for k, v in preserved.items() if k in surviving}
         self._recompute_node_temperatures()
