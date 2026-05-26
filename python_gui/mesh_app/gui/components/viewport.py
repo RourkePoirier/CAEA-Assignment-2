@@ -261,7 +261,7 @@ class Viewport(tk.Frame):
 
     def _draw_tooltip(self, px, py, node):
         self.canvas.delete("tooltip")
-        thermal = "Insulated" if node.temperature is None else f"{node.temperature:.1f} °C"
+        thermal = "Convecting" if node.temperature is None else f"{node.temperature:.1f} °C"
         text    = (
             f"x={self._round_metres(node.x)}, y={self._round_metres(node.y)}\n"
             f"type={node.type.name}\ntemp={thermal}"

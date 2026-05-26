@@ -30,7 +30,7 @@ class GeometryManager:
         self.nodes:    list[Node]    = []
         self.elements: list[Element] = []
 
-        # Outer mesh edges (insulated unless endpoint nodes have temperature set)
+        # Outer mesh edges (convecting unless endpoint nodes have temperature set)
         self.boundary_edges: list[Edge] = []
 
         # Fixed temperature BC per boundary edge, keyed by sorted endpoint positions

@@ -17,19 +17,25 @@ class MeshScheme(StrEnum):
     NOTHING         = "Nothing"
 
 class NodeType(Enum):
-    NODE = 1 
+    NODE        = 1 
     FIXED_NODE  = 2
     FORCE_NODE  = 3
+
+class ThermalType(Enum):
+    CONVECTION = 2
+    FIXED_TEMP = 2
+    INSULATED  = 3
 
 ##########################################################################
 
 @dataclass
 class Node:
-    x:           float
-    y:           float
-    type:        NodeType
-    temp:        float | None = None
-    id:          int = field(default_factory=lambda: id(object()))
+    x:              float
+    y:              float
+    type:           NodeType
+    thermal_type:   ThermalType
+    temp_value:     float | None = None
+    id:             int = field(default_factory=lambda: id(object()))
 
     def __hash__(self):
         return hash(self.id)
