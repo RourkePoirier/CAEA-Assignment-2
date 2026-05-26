@@ -22,7 +22,7 @@ class NodeType(Enum):
     FORCE_NODE  = 3
 
 class ThermalType(Enum):
-    CONVECTION = 2
+    CONVECTION = 1
     FIXED_TEMP = 2
     INSULATED  = 3
 
@@ -33,7 +33,7 @@ class Node:
     x:              float
     y:              float
     type:           NodeType
-    thermal_type:   ThermalType
+    thermal_type:   ThermalType | None = None
     temp_value:     float | None = None
     id:             int = field(default_factory=lambda: id(object()))
 
