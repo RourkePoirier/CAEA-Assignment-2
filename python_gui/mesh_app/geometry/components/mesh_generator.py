@@ -31,7 +31,7 @@ def _amr(nodes: list[Node]) -> tuple[list[Node], list[Element]]:
     points = np.array([[n.x, n.y] for n in nodes])
 
     important_points = np.array([
-        [n.x, n.y] for n in nodes if (n.type == NodeType.FORCE_NODE or n.thermal_type == ThermalType.CONVECTION)
+        [n.x, n.y] for n in nodes if (n.type == NodeType.FORCE_NODE)
     ])
 
     if len(important_points) == 0:
