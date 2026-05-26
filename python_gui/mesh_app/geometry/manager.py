@@ -63,8 +63,7 @@ class GeometryManager:
         return self.boundary_edges
 
     def get_edge_fixed_temperature(self, edge: Edge) -> float | None:
-        if not self.base_nodes:
-            return None
+        if not self.base_nodes: return None
         return self.edge_fixed_temps.get(self._edge_pos_key(edge, self.base_nodes))
 
     def set_edge_fixed_temperature(self, edge: Edge, temperature: float) -> None:
@@ -101,14 +100,14 @@ class GeometryManager:
             self._set_node_temperature(node, blended)
 
     def _set_node_temperature(self, node: Node, temperature: float | None) -> None:
-        node.temp_value = temperature
+        node.temp = temperature
         for placed in self.placed_nodes:
             if placed.x == node.x and placed.y == node.y:
-                placed.temp_value = temperature
+                placed.temp = temperature
 
     def _clear_all_temperatures(self) -> None:
         for node in (*self.base_nodes, *self.placed_nodes):
-            node.temp_value = None
+            node.temp = None
 
     def _edge_pos_key(self, edge: Edge, nodes: list[Node]) -> tuple[tuple[float, float], tuple[float, float]]:
         na, nb = edge.get_nodes(nodes)

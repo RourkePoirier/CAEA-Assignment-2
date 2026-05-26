@@ -261,10 +261,13 @@ class Viewport(tk.Frame):
 
     def _draw_tooltip(self, px, py, node):
         self.canvas.delete("tooltip")
-        thermal = f"{node.temp_value:.1f} °C"
+        
+        if node.temp is None: temp = "Unknown"
+        else: temp = f"{node.temp:.1f} °C"
+
         text    = (
             f"x={self._round_metres(node.x)}, y={self._round_metres(node.y)}\n"
-            f"type={node.type.name}\ntemp={thermal}"
+            f"type={node.type.name}\ntemp={temp}"
         )
         text_id = self.canvas.create_text(px+10, py-10, text=text, anchor="sw", tags="tooltip")
         bbox = self.canvas.bbox(text_id)
