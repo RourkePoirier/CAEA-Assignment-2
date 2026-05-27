@@ -38,6 +38,7 @@ class GeometryManager:
 
         # Fixed temperature BC per boundary edge, keyed by sorted endpoint positions
         self.edge_fixed_temps: dict[tuple, float] = {}
+        
         # Thermal BC type per boundary edge (default convection if not set)
         self.edge_thermal_types: dict[tuple, ThermalType] = {}
         self.rake_edge:  Edge | None = None
@@ -46,6 +47,7 @@ class GeometryManager:
         self.subd_level: int = 0
 
     ## Accessors
+    def get_placed_edges(self) -> list[Edge]:    return self.placed_edges
     def get_placed_nodes(self) -> list[Node]:    return self.placed_nodes
     def get_nodes(self)        -> list[Node]:    return self.nodes
     def get_elements(self)     -> list[Element]: return self.elements
@@ -67,18 +69,12 @@ class GeometryManager:
     def get_boundary_edges(self) -> list[Edge]:
         return self.boundary_edges
 
-    def get_placed_edges(self) -> list[Edge]:
-        """Edges connecting adjacent placed nodes (convex hull order). Used by viewport
-        tools so selection is never affected by interior mesh topology."""
-        return self.placed_edges
-
     def get_edge_fixed_temperature(self, edge: Edge) -> float | None:
         if not self.base_nodes: return None
         return self.edge_fixed_temps.get(self._edge_pos_key(edge, self.base_nodes))
 
     def get_edge_thermal_type(self, edge: Edge) -> ThermalType:
-        if not self.base_nodes:
-            return ThermalType.CONVECTION
+        if not self.base_nodes: return ThermalType.CONVECTION
         return self.edge_thermal_types.get(self._edge_pos_key(edge, self.base_nodes), ThermalType.CONVECTION)
 
     def set_edge_thermal_type(self, edge: Edge, thermal_type: ThermalType) -> None:
@@ -170,9 +166,14 @@ class GeometryManager:
         self.edge_fixed_temps = {k: v for k, v in preserved.items() if k in surviving}
         self._recompute_node_temperatures()
 
+    def _collect_edge_thermal_types(self) -> dict[tuple, ThermalType]:
+        return dict(self.edge_thermal_types)
+
+    def _restore_edge_thermal_types(self, preserved: dict[tuple, ThermalType]) -> None:
+        surviving = {self._edge_pos_key(edge, self.base_nodes) for edge in self.boundary_edges}
+        self.edge_thermal_types = {k: v for k, v in preserved.items() if k in surviving}
+
     def _compute_placed_edges(self) -> None:
-        """Build edges between consecutive placed nodes in convex-hull order.
-        These represent the user-drawn outline and are unaffected by mesh topology."""
         from scipy.spatial import ConvexHull
         import numpy as np
 
