@@ -2,30 +2,52 @@ import tkinter as tk
 from tkinter import simpledialog, messagebox
 
 
-class FixedTemperatureDialog(simpledialog.Dialog):
-    """Simple dialog to set a fixed temperature (°C) on a boundary edge."""
+class ThermalBCDialog(simpledialog.Dialog):
+    """Dialog to set an edge thermal BC: convecting (default), fixed temperature, or insulated."""
 
     def __init__(self, parent, existing: float | None = None):
-        self.result = None
+        self.result = None  # ("convecting", None) | ("insulated", None) | ("fixed", float)
         self.existing = existing
-        super().__init__(parent, title="Fixed Temperature")
+        super().__init__(parent, title="Thermal Boundary Condition")
 
     def body(self, master):
-        tk.Label(master, text="Temperature (°C):", font=("Arial", 10, "bold")).grid(
-            row=0, column=0, sticky="w", pady=(0, 4),
+        tk.Label(master, text="Type:", font=("Arial", 10, "bold")).grid(row=0, column=0, sticky="w", pady=(0, 6))
+
+        self._mode = tk.StringVar(value="fixed" if self.existing is not None else "convecting")
+        tk.Radiobutton(master, text="Convecting (default)", variable=self._mode, value="convecting", command=self._sync).grid(
+            row=1, column=0, columnspan=2, sticky="w"
         )
+        tk.Radiobutton(master, text="Insulated", variable=self._mode, value="insulated", command=self._sync).grid(
+            row=2, column=0, columnspan=2, sticky="w"
+        )
+        tk.Radiobutton(master, text="Fixed Temperature", variable=self._mode, value="fixed", command=self._sync).grid(
+            row=3, column=0, columnspan=2, sticky="w"
+        )
+
+        tk.Label(master, text="Temperature (°C):").grid(row=4, column=0, sticky="w", pady=(6, 0))
         self._entry = tk.Entry(master, width=12)
-        self._entry.grid(row=0, column=1, sticky="w")
+        self._entry.grid(row=4, column=1, sticky="w", pady=(6, 0))
         if self.existing is not None:
             self._entry.insert(0, str(self.existing))
+
+        self._sync()
         return self._entry
 
     def validate(self):
+        mode = self._mode.get()
+        if mode == "convecting":
+            self.result = ("convecting", None)
+            return True
+        if mode == "insulated":
+            self.result = ("insulated", None)
+            return True
+
         try:
-            self.result = float(self._entry.get().strip())
+            temp = float(self._entry.get().strip())
         except ValueError:
             messagebox.showerror("Invalid input", "Please enter a numeric temperature.")
             return False
+        self.result = ("fixed", temp)
         return True
 
     def apply(self):
@@ -39,5 +61,10 @@ class FixedTemperatureDialog(simpledialog.Dialog):
         box.pack()
 
     def _clear(self):
-        self.result = "clear"
+        self.result = ("convecting", None)
         self.destroy()
+
+    def _sync(self):
+        mode = self._mode.get()
+        state = "normal" if mode == "fixed" else "disabled"
+        self._entry.configure(state=state)

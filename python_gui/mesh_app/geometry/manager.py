@@ -38,6 +38,8 @@ class GeometryManager:
 
         # Fixed temperature BC per boundary edge, keyed by sorted endpoint positions
         self.edge_fixed_temps: dict[tuple, float] = {}
+        # Thermal BC type per boundary edge (default convection if not set)
+        self.edge_thermal_types: dict[tuple, ThermalType] = {}
         self.rake_edge:  Edge | None = None
         self.flank_edge: Edge | None = None
 
@@ -74,12 +76,51 @@ class GeometryManager:
         if not self.base_nodes: return None
         return self.edge_fixed_temps.get(self._edge_pos_key(edge, self.base_nodes))
 
+    def get_edge_thermal_type(self, edge: Edge) -> ThermalType:
+        if not self.base_nodes:
+            return ThermalType.CONVECTION
+        return self.edge_thermal_types.get(self._edge_pos_key(edge, self.base_nodes), ThermalType.CONVECTION)
+
+    def set_edge_thermal_type(self, edge: Edge, thermal_type: ThermalType) -> None:
+        if not self.base_nodes:
+            return
+        key = self._edge_pos_key(edge, self.base_nodes)
+        if thermal_type == ThermalType.CONVECTION:
+            self.edge_thermal_types.pop(key, None)
+        else:
+            self.edge_thermal_types[key] = thermal_type
+
     def set_edge_fixed_temperature(self, edge: Edge, temperature: float) -> None:
-        self.edge_fixed_temps[self._edge_pos_key(edge, self.base_nodes)] = temperature
+        if not self.base_nodes:
+            return
+        key = self._edge_pos_key(edge, self.base_nodes)
+        self.edge_fixed_temps[key] = temperature
+        self.edge_thermal_types[key] = ThermalType.FIXED_TEMP
         self._recompute_node_temperatures()
 
     def clear_edge_fixed_temperature(self, edge: Edge) -> None:
-        self.edge_fixed_temps.pop(self._edge_pos_key(edge, self.base_nodes), None)
+        if not self.base_nodes:
+            return
+        key = self._edge_pos_key(edge, self.base_nodes)
+        self.edge_fixed_temps.pop(key, None)
+        if self.edge_thermal_types.get(key) == ThermalType.FIXED_TEMP:
+            self.edge_thermal_types.pop(key, None)
+        self._recompute_node_temperatures()
+
+    def set_edge_insulated(self, edge: Edge) -> None:
+        if not self.base_nodes:
+            return
+        key = self._edge_pos_key(edge, self.base_nodes)
+        self.edge_fixed_temps.pop(key, None)
+        self.edge_thermal_types[key] = ThermalType.INSULATED
+        self._recompute_node_temperatures()
+
+    def clear_edge_thermal_bc(self, edge: Edge) -> None:
+        if not self.base_nodes:
+            return
+        key = self._edge_pos_key(edge, self.base_nodes)
+        self.edge_fixed_temps.pop(key, None)
+        self.edge_thermal_types.pop(key, None)
         self._recompute_node_temperatures()
 
     def _edge_length(self, edge: Edge) -> float:
@@ -192,6 +233,7 @@ class GeometryManager:
         self.boundary_edges.clear()
         self.placed_edges.clear()
         self.edge_fixed_temps.clear()
+        self.edge_thermal_types.clear()
         self.rake_edge  = None
         self.flank_edge = None
         self.subd_level = 0
@@ -199,12 +241,14 @@ class GeometryManager:
     ## Update — single method that recomputes everything from the manually placed_nodes
     def update(self) -> None:
         preserved_bcs = self._collect_edge_temperature_bcs()
+        preserved_types = self._collect_edge_thermal_types()
 
         self.base_nodes, self.base_elements = generate_mesh(self.placed_nodes, self.scheme)
         self.nodes, self.elements = subdivide_triangular_mesh(self.base_nodes, self.base_elements, self.subd_level)
         self._compute_boundary_edges()
         self._compute_placed_edges()
         self._restore_edge_temperature_bcs(preserved_bcs)
+        self._restore_edge_thermal_types(preserved_types)
         self._validate_edge_tags()
 
     def _validate_edge_tags(self) -> None:

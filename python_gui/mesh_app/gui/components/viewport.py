@@ -10,7 +10,7 @@ import tkinter as tk
 from enum import Enum
 
 from gui.components.force_dialog import ForceDialog
-from gui.components.thermal_bc_dialog import FixedTemperatureDialog
+from gui.components.thermal_bc_dialog import ThermalBCDialog
 
 from geometry.components.types import *
 from geometry.manager import GeometryManager
@@ -296,11 +296,14 @@ class Viewport(tk.Frame):
             (self.geometry.flank_edge, FLANK_COLOUR, "FLANK", 2),
         ]
 
-        for edge in self.geometry.get_placed_edges():
+        for edge in self.geometry.get_boundary_edges():
+            edge_type = self.geometry.get_edge_thermal_type(edge)
             edge_temp = self.geometry.get_edge_fixed_temperature(edge)
             is_hov    = edge == self._hovered_edge
 
-            if edge_temp is not None:
+            if edge_type == ThermalType.INSULATED:
+                edge_styles.append((edge, "#5A9BD5", "INS", 2))
+            elif edge_temp is not None:
                 edge_styles.append((edge, THERMAL_FIXED_TEMP_COLOUR, f"{edge_temp:.0f} °C", 2))
             if is_hov:
                 edge_styles.append((edge, "#FFD700", None, 4))
@@ -317,13 +320,16 @@ class Viewport(tk.Frame):
                 
     def _open_thermal_bc_dialog(self, edge: Edge) -> None:
         existing = self.geometry.get_edge_fixed_temperature(edge)
-        dlg = FixedTemperatureDialog(self.winfo_toplevel(), existing=existing)
+        dlg = ThermalBCDialog(self.winfo_toplevel(), existing=existing)
         if dlg.result is None:
             return
-        if dlg.result == "clear":
-            self.geometry.clear_edge_fixed_temperature(edge)
-        else:
-            self.geometry.set_edge_fixed_temperature(edge, dlg.result)
+        mode, value = dlg.result
+        if mode == "convecting":
+            self.geometry.clear_edge_thermal_bc(edge)
+        elif mode == "insulated":
+            self.geometry.set_edge_insulated(edge)
+        elif mode == "fixed":
+            self.geometry.set_edge_fixed_temperature(edge, float(value))
         self._redraw_thermal_overlay()
 
     ############################################################################
@@ -378,7 +384,7 @@ class Viewport(tk.Frame):
     def _on_double_left_click(self, event):
         if self._hovered_edge is not None:
             edge = self._hovered_edge
-            self.geometry.clear_edge_fixed_temperature(edge)
+            self.geometry.clear_edge_thermal_bc(edge)
             if edge == self.geometry.rake_edge:  self.geometry.rake_edge  = None
             if edge == self.geometry.flank_edge: self.geometry.flank_edge = None
             self._hovered_edge = None

@@ -28,20 +28,37 @@ class GUIManager:
         # Read data
         try:
             data   = pd.read_excel('data_structure.xlsx', header=None, skiprows=1).values
-            U      = pd.read_excel('displacement.xlsx',   header=None).values.flatten()
-            Sx     = pd.read_excel('stress_x.xlsx',       header=None).values.flatten()
-            Sy     = pd.read_excel('stress_y.xlsx',       header=None).values.flatten()
-            Sxy    = pd.read_excel('stress_xy.xlsx',      header=None).values.flatten()
+            #U      = pd.read_excel('displacement.xlsx',   header=None).values.flatten()
+            #Sx     = pd.read_excel('stress_x.xlsx',       header=None).values.flatten()
+            #Sy     = pd.read_excel('stress_y.xlsx',       header=None).values.flatten()
+            #Sxy    = pd.read_excel('stress_xy.xlsx',      header=None).values.flatten()
         except Exception as e:
             tk.messagebox.showerror("Error", f"Failed to read Excel files: {e}")
             self.root.destroy()
             return
+
+        # Optional Project 2 thermal results (loaded after we know n_nodes below)
+        temperature_C = None
 
         # Parse structure parameters (matching MATLAB hardcoded positions)
         n_element = int(data[0, 0])
         n_nodes   = int(data[0, 1])
         E         = float(data[0, 7])
         v         = float(data[0, 12])
+
+        # Optional Project 2 thermal results
+        try:
+            temp_df = pd.read_excel('project2_results.xlsx', sheet_name='temperature_results')
+            # Expected columns from ThermalSolver_1.m:
+            # Node, X_original, Y_original, X_m, Y_m, Temperature_C
+            if 'Node' in temp_df.columns and 'Temperature_C' in temp_df.columns:
+                temperature_C = np.full(n_nodes, np.nan, dtype=float)
+                for _, row in temp_df.iterrows():
+                    node_id = int(row['Node'])
+                    if 1 <= node_id <= n_nodes:
+                        temperature_C[node_id - 1] = float(row['Temperature_C'])
+        except Exception:
+            temperature_C = None
 
         # Only take first n_element rows for connectivity
         ncon = data[:n_element, 2:5].astype(int) - 1  # 0-indexed
@@ -58,16 +75,15 @@ class GUIManager:
         X = X[:n_nodes]
         Y = Y[:n_nodes]
 
+        # Notebook with three
+        notebook = ttk.Notebook(self.root)
+        notebook.pack(fill=tk.BOTH, expand=1)
 
+        '''
         # Strain from plane stress constitutive relations
         Ex  = (Sx - v * Sy) / E
         Ey  = (Sy - v * Sx) / E
         Exy = Sxy * 2 * (1 + v) / E
-
-
-        # Notebook with three
-        notebook = ttk.Notebook(self.root)
-        notebook.pack(fill=tk.BOTH, expand=1)
 
         #
         #   Page 1 - Displacement
@@ -96,7 +112,7 @@ class GUIManager:
         notebook.add(tab3, text='Strain')
 
         StrainWindow(X, Y, Ex, Ey, Exy, n_element, n_nodes, ncon, tab3)
-
+        '''
         #
         #   Page 4 - Temperature
         #
@@ -104,7 +120,7 @@ class GUIManager:
         tab4 = ttk.Frame(notebook)
         notebook.add(tab4, text='Temperature')
 
-        TempWindow(tab4)
+        TempWindow(X, Y, ncon, n_element, temperature_C, tab4)
 
     def on_close(self):
         plt.close('all')

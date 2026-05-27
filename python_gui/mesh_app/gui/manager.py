@@ -60,6 +60,9 @@ class GUIManager:
         mechanical_properties = PropertiesWindow(self.root, label='Mechanical Properties', entries=m_properties, width=250, height=600)
         process_properties = PropertiesWindow(self.root, label='Process Properties', entries=p_properties, width=250, height=600)
         thermal_properties = PropertiesWindow(self.root, label='Thermal Properties', entries=t_properties, width=250, height=600)
+        self.components["mechanical_properties"] = mechanical_properties
+        self.components["process_properties"] = process_properties
+        self.components["thermal_properties"] = thermal_properties
 
         mesh_select = MeshSelectDropdown(
             self.root,
@@ -72,7 +75,7 @@ class GUIManager:
         exp_button    = tk.Button(
             self.root,
             text="Export to data_structure.xlsx",
-            command=lambda: export_excel_file(self.geometry),
+            command=lambda: export_excel_file(self.geometry, self._collect_properties()),
         )
         subd_up_btn   = tk.Button(self.root, text="Subdivide +", command=lambda: [self.geometry.subdivide_up(),   viewport._redraw()])
         subd_down_btn = tk.Button(self.root, text="Subdivide -", command=lambda: [self.geometry.subdivide_down(), viewport._redraw()])
@@ -88,5 +91,13 @@ class GUIManager:
         exp_button.place                (x=900,  y=630)
 
     # ---------- RUN ----------
+    def _collect_properties(self) -> dict:
+        props = {}
+        for key in ("mechanical_properties", "process_properties", "thermal_properties"):
+            widget = self.components.get(key)
+            if widget is not None:
+                props.update(widget.get_dict())
+        return props
+
     def run(self):
         self.root.mainloop()
