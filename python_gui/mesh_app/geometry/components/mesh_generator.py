@@ -30,10 +30,12 @@ def generate_mesh(nodes: List[Node], scheme: MeshScheme) -> tuple[List[Node], Li
 def _amr(nodes: list[Node]) -> tuple[list[Node], list[Element]]:
     points = np.array([[n.x, n.y] for n in nodes])
 
-    important_points = np.array([
-        [n.x, n.y] for n in nodes if (n.type == NodeType.FORCE_NODE)
-    ])
+    important_points = []
 
+    for n in nodes:
+        if n.type == NodeType.FORCE_NODE or n.temp != None:
+            important_points.append([n.x, n.y])
+        
     if len(important_points) == 0:
         return _delaunay(nodes)
 
