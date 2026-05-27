@@ -84,11 +84,21 @@ class Viewport(tk.Frame):
         hint_bar = tk.Frame(self, bg="#f0f0f0")
         hint_bar.pack(fill="x", side="top")
 
-        tk.Label(hint_bar,
-                text="CONTROLS:  [R] Reset view   [Q] Node   [W] Fixed   [E] Force   [R] Thermal BC  [T] Rake face   [Y] Flank face   [Double-click] Delete",
-                bg="#f0f0f0", fg="#666666", font=("Arial", 8)
-                ).pack(side="left", padx=8, pady=(0, 2))
-        
+        reset_btn   = tk.Button(hint_bar, text="Reset View",        command=lambda: self._reset_view())
+        node_btn    = tk.Button(hint_bar, text="Node Tool",         command=lambda: self._set_tool(Tool.NODE))
+        fixed_btn   = tk.Button(hint_bar, text="Fixed Tool",        command=lambda: self._set_tool(Tool.FIXED))
+        force_btn   = tk.Button(hint_bar, text="Force Tool",        command=lambda: self._set_tool(Tool.FORCE))
+        therm_btn   = tk.Button(hint_bar, text="Thermal BC Tool",   command=lambda: self._set_tool(Tool.THERMAL))
+        rake_btn    = tk.Button(hint_bar, text="Rake Face Tool",    command=lambda: self._set_tool(Tool.RAKE))
+        flank_btn   = tk.Button(hint_bar, text="Flank Face Tool",   command=lambda: self._set_tool(Tool.FLANK))
+       
+        reset_btn.pack(side="left")
+        node_btn.pack(side="left")
+        fixed_btn.pack(side="left")
+        force_btn.pack(side="left")
+        therm_btn.pack(side="left")
+        rake_btn.pack(side="left")
+        flank_btn.pack(side="left")
 
         # Canvas
         self.canvas = tk.Canvas(self, width=width, height=height, bg="white")
@@ -101,14 +111,6 @@ class Viewport(tk.Frame):
         self.canvas.bind("<MouseWheel>",      self._on_mouse_wheel)
         self.canvas.bind("<Motion>",          self._on_mouse_move)
         self.canvas.bind("<Configure>",       lambda e: self._redraw())
-
-        self.bind_all("q", lambda e: self._set_tool(Tool.NODE))
-        self.bind_all("w", lambda e: self._set_tool(Tool.FIXED))
-        self.bind_all("e", lambda e: self._set_tool(Tool.FORCE))
-        self.bind_all("r", lambda e: self._set_tool(Tool.THERMAL))
-        self.bind_all("t", lambda e: self._set_tool(Tool.RAKE))
-        self.bind_all("y", lambda e: self._set_tool(Tool.FLANK))
-        self.bind_all("r", lambda e: self._reset_view())
 
         self._redraw()
 

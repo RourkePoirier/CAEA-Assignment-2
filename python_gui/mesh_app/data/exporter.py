@@ -61,7 +61,7 @@ def export_excel_file(geometry: GeometryManager, properties: dict):
         dzero = []
         for i, node in enumerate(nodes):
             if node.type == NodeType.FIXED_NODE:
-                dzero.append(2 * (i + 1) - 1)  # x DOF (1-based)
+                dzero.append(2 * (i + 1) - 1)   # x DOF (1-based)
                 dzero.append(2 * (i + 1))       # y DOF (1-based)
 
         E = properties.get("Young's Modulus", 0)
