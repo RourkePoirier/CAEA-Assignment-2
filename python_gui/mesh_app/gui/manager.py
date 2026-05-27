@@ -23,6 +23,9 @@ m_properties = [
 ]
 
 p_properties = [
+    ("Chip thickness (a2)", "mm"),
+    ("Chip tool contact length (L)", "mm"),
+    ("Rake angle", "deg"),
     ("Cutting speed", "m/min"),
     ("Depth of cut", "mm"),
     ("Feed", "mm/rev"),
@@ -84,12 +87,12 @@ class GUIManager:
         viewport.place                  (x=50,   y=50)
         mechanical_properties.place     (x=900,  y=50)
         process_properties.place        (x=900,  y=150)
-        thermal_properties.place        (x=900,  y=300)
-        mesh_select.place               (x=900,  y=450)
-        subd_up_btn.place               (x=1000, y=550)
-        subd_down_btn.place             (x=900,  y=550)
-        clear_button.place              (x=938,  y=580)
-        exp_button.place                (x=900,  y=630)
+        thermal_properties.place        (x=900,  y=340)
+        mesh_select.place               (x=900,  y=500)
+        subd_up_btn.place               (x=1000, y=570)
+        subd_down_btn.place             (x=900,  y=570)
+        clear_button.place              (x=938,  y=600)
+        exp_button.place                (x=900,  y=650)
 
     # ---------- RUN ----------
     def _collect_properties(self) -> dict:
