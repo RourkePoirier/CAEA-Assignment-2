@@ -29,42 +29,42 @@ def generate_mesh(nodes: List[Node], scheme: MeshScheme) -> tuple[List[Node], Li
 # Just need to tune a bit
 def _amr(nodes: list[Node]) -> tuple[list[Node], list[Element]]:
     points = np.array([[n.x, n.y] for n in nodes])
-
+ 
     important_points = []
-
+ 
     for n in nodes:
         if n.type == NodeType.FORCE_NODE or n.temp != None:
             important_points.append([n.x, n.y])
         
     if len(important_points) == 0:
         return _delaunay(nodes)
-
+ 
     important_tree = cKDTree(important_points)
     tree = cKDTree(points)
     dists, _ = tree.query(points, k=2)
     base_len = float(np.median(dists[:, 1]))
     if base_len == 0:
         return _delaunay(nodes)
-
+ 
     hull = ConvexHull(points)
     bbox_diag = np.linalg.norm(points.max(axis=0) - points.min(axis=0))
     hull_area = hull.volume 
     influence_radius = np.sqrt(hull_area) * 0.67
     fine_len = min(base_len * 0.15, bbox_diag * 0.04)
-
+ 
     def _inside_hull(p: np.ndarray) -> bool:
         return bool(np.all(hull.equations @ np.append(p, 1) <= 1e-10))
-
+ 
     x_min, y_min = points.min(axis=0)
     x_max, y_max = points.max(axis=0)
-
+ 
     rng = np.random.default_rng(seed=42)
     refined_pts: list[np.ndarray] = []
-
+ 
     # Coarse background grid with distance-dependent spacing
     base_coarse = min(base_len * 1.8, bbox_diag * 0.15)
     max_coarse  = min(base_len * 4.0, bbox_diag * 0.3) 
-
+ 
     nx_c = int((x_max - x_min) / base_coarse) + 1
     ny_c = int((y_max - y_min) / base_coarse) + 1
     for ix in range(nx_c):
@@ -72,29 +72,29 @@ def _amr(nodes: list[Node]) -> tuple[list[Node], list[Element]]:
             px = x_min + ix * base_coarse + rng.uniform(-base_coarse * 0.3, base_coarse * 0.3)
             py = y_min + iy * base_coarse + rng.uniform(-base_coarse * 0.3, base_coarse * 0.3)
             p  = np.array([px, py])
-
+ 
             if not _inside_hull(p):
                 continue
-
+ 
             dist_to_force, _ = important_tree.query(p)
             t = min(dist_to_force / influence_radius, 1.0)
-
+ 
             # Local spacing grows from base_coarse → max_coarse with distance
             local_spacing = base_coarse + (max_coarse - base_coarse) * t
-
+ 
             # Randomly drop points whose local spacing is coarser than grid spacing
             keep_prob = (base_coarse / local_spacing) ** 2
             if rng.random() < keep_prob:
                 refined_pts.append(p)
-
+ 
     coarse_len = min(base_len * 0.6, bbox_diag * 0.15)
     for vi in hull.vertices:
         corner = points[vi]
         dist_to_force, _ = important_tree.query(corner)
         t = min(dist_to_force / influence_radius, 1.0)
         local_len = coarse_len * (0.6 + 0.4 * t)
-
-        n_rings = 3
+ 
+        n_rings = 5
         for ring in range(1, n_rings + 1):
             radius = local_len * ring
             n_pts = max(6, int(round(2 * np.pi * radius / local_len)))
@@ -103,35 +103,35 @@ def _amr(nodes: list[Node]) -> tuple[list[Node], list[Element]]:
                 p = corner + radius * np.array([np.cos(angle), np.sin(angle)])
                 if _inside_hull(p):
                     refined_pts.append(p)
-
+ 
     # Interior points
     nx = int((x_max - x_min) / fine_len) + 1
     ny = int((y_max - y_min) / fine_len) + 1
-
+ 
     for ix in range(nx):
         for iy in range(ny):
             px = x_min + ix * fine_len + rng.uniform(-fine_len * 0.3, fine_len * 0.3)
             py = y_min + iy * fine_len + rng.uniform(-fine_len * 0.3, fine_len * 0.3)
             p  = np.array([px, py])
-
+ 
             if not _inside_hull(p):
                 continue
-
+ 
             dist_to_force, _ = important_tree.query(p)
             if dist_to_force >= influence_radius:
                 continue
-
+ 
             t = dist_to_force / influence_radius
             keep_prob = (1.0 - t) ** 2
             if rng.random() < keep_prob:
                 refined_pts.append(p)
-
+ 
     # Seed ALL hull edges, density increases near force nodes
     hull_verts = list(hull.vertices) + [hull.vertices[0]]
     for k in range(len(hull_verts) - 1):
         p0 = points[hull_verts[k]]
         p1 = points[hull_verts[k + 1]]
-
+ 
         edge_len = np.linalg.norm(p1 - p0)
         dist_to_force, _ = important_tree.query((p0 + p1) / 2)
         t = min(dist_to_force / influence_radius, 1.0)
@@ -146,16 +146,24 @@ def _amr(nodes: list[Node]) -> tuple[list[Node], list[Element]]:
     
     if not refined_pts:
         return _delaunay(nodes)
-
+ 
     all_pts = np.vstack([points] + [r[None] for r in refined_pts])
     rounded = np.round(all_pts / (fine_len * 0.5)).astype(int)
     _, unique_idx = np.unique(rounded, axis=0, return_index=True)
     all_pts = all_pts[np.sort(unique_idx)]
-
+ 
+    # Build working_nodes from the deduplicated all_pts.
+    # The original placed nodes may have shifted position in all_pts after
+    # np.unique reordering, so match them back by coordinate rather than
+    # assuming they're still at indices 0..len(nodes)-1.
     working_nodes = [Node(p[0], p[1], NodeType.NODE) for p in all_pts]
-    for i, n in enumerate(nodes):
-        working_nodes[i].type = n.type
-
+    placed_lookup = {(n.x, n.y): n for n in nodes}
+    for wn in working_nodes:
+        placed = placed_lookup.get((wn.x, wn.y))
+        if placed is not None:
+            wn.type = placed.type
+            wn.temp = placed.temp
+ 
     tri = Delaunay(all_pts)
     elements: list[Element] = []
     for simplex in tri.simplices:
@@ -163,9 +171,9 @@ def _amr(nodes: list[Node]) -> tuple[list[Node], list[Element]]:
         if not _is_ccw(working_nodes[i0], working_nodes[i1], working_nodes[i2]):
             i1, i2 = i2, i1
         elements.append(Element(node_indices=(i0, i1, i2)))
-
-    return _remap_to_used_nodes(working_nodes, elements)
-
+ 
+    return _remap_to_used_nodes(working_nodes, elements
+                                )
 def _delaunay(nodes: List[Node]) -> tuple[List[Node], List[Element]]:
     points = np.array([[n.x, n.y] for n in nodes])
     tri    = Delaunay(points)

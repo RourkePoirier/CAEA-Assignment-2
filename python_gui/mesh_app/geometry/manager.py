@@ -30,6 +30,9 @@ class GeometryManager:
         self.nodes:    list[Node]    = []
         self.elements: list[Element] = []
 
+        # Edges between adjacent placed nodes (convex hull order) — used for tool selection
+        self.placed_edges: list[Edge] = []
+
         # Outer mesh edges (convecting unless endpoint nodes have temperature set)
         self.boundary_edges: list[Edge] = []
 
@@ -61,6 +64,11 @@ class GeometryManager:
 
     def get_boundary_edges(self) -> list[Edge]:
         return self.boundary_edges
+
+    def get_placed_edges(self) -> list[Edge]:
+        """Edges connecting adjacent placed nodes (convex hull order). Used by viewport
+        tools so selection is never affected by interior mesh topology."""
+        return self.placed_edges
 
     def get_edge_fixed_temperature(self, edge: Edge) -> float | None:
         if not self.base_nodes: return None
@@ -121,6 +129,43 @@ class GeometryManager:
         self.edge_fixed_temps = {k: v for k, v in preserved.items() if k in surviving}
         self._recompute_node_temperatures()
 
+    def _compute_placed_edges(self) -> None:
+        """Build edges between consecutive placed nodes in convex-hull order.
+        These represent the user-drawn outline and are unaffected by mesh topology."""
+        from scipy.spatial import ConvexHull
+        import numpy as np
+
+        self.placed_edges = []
+        if len(self.placed_nodes) < 2:
+            return
+
+        if len(self.placed_nodes) == 2:
+            # Only two placed nodes — one edge between them
+            pos = {(n.x, n.y): i for i, n in enumerate(self.base_nodes)}
+            ia = pos.get((self.placed_nodes[0].x, self.placed_nodes[0].y))
+            ib = pos.get((self.placed_nodes[1].x, self.placed_nodes[1].y))
+            if ia is not None and ib is not None:
+                self.placed_edges.append(Edge(node_indices=(ia, ib)))
+            return
+
+        pts = np.array([[n.x, n.y] for n in self.placed_nodes])
+        try:
+            hull = ConvexHull(pts)
+        except Exception:
+            return
+
+        # Map placed node coords → base_nodes index (nodes were copied, so match by position)
+        pos_to_base = {(n.x, n.y): i for i, n in enumerate(self.base_nodes)}
+
+        hull_verts = list(hull.vertices)
+        for k in range(len(hull_verts)):
+            pa = self.placed_nodes[hull_verts[k]]
+            pb = self.placed_nodes[hull_verts[(k + 1) % len(hull_verts)]]
+            ia = pos_to_base.get((pa.x, pa.y))
+            ib = pos_to_base.get((pb.x, pb.y))
+            if ia is not None and ib is not None:
+                self.placed_edges.append(Edge(node_indices=(ia, ib)))
+
     # Compute boundary edges from the base triangular elements
     # Used in to define Thermal Boundary Conditions
     def _compute_boundary_edges(self) -> None:
@@ -145,6 +190,7 @@ class GeometryManager:
         self.nodes.clear()
         self.elements.clear()
         self.boundary_edges.clear()
+        self.placed_edges.clear()
         self.edge_fixed_temps.clear()
         self.rake_edge  = None
         self.flank_edge = None
@@ -157,6 +203,7 @@ class GeometryManager:
         self.base_nodes, self.base_elements = generate_mesh(self.placed_nodes, self.scheme)
         self.nodes, self.elements = subdivide_triangular_mesh(self.base_nodes, self.base_elements, self.subd_level)
         self._compute_boundary_edges()
+        self._compute_placed_edges()
         self._restore_edge_temperature_bcs(preserved_bcs)
         self._validate_edge_tags()
 

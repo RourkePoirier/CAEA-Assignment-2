@@ -296,7 +296,7 @@ class Viewport(tk.Frame):
             (self.geometry.flank_edge, FLANK_COLOUR, "FLANK", 2),
         ]
 
-        for edge in self.geometry.get_boundary_edges():
+        for edge in self.geometry.get_placed_edges():
             edge_temp = self.geometry.get_edge_fixed_temperature(edge)
             is_hov    = edge == self._hovered_edge
 
@@ -464,7 +464,7 @@ class Viewport(tk.Frame):
         best      = None
         best_dist = threshold_px
 
-        for edge in self.geometry.get_boundary_edges():
+        for edge in self.geometry.get_placed_edges():
             a, b = edge.node_indices
             na   = self.geometry.base_nodes[a]
             nb   = self.geometry.base_nodes[b]
