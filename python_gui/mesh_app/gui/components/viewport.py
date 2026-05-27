@@ -85,7 +85,7 @@ class Viewport(tk.Frame):
         hint_bar.pack(fill="x", side="top")
 
         tk.Label(hint_bar,
-                text="CONTROLS:  [R] Reset view   [1] Node   [2] Fixed   [3] Force   [4] Fixed temperature   [5] Rake face   [6] Flank face   [Double-click] Delete",
+                text="CONTROLS:  [R] Reset view   [Q] Node   [W] Fixed   [E] Force   [R] Thermal BC  [T] Rake face   [Y] Flank face   [Double-click] Delete",
                 bg="#f0f0f0", fg="#666666", font=("Arial", 8)
                 ).pack(side="left", padx=8, pady=(0, 2))
         
@@ -102,12 +102,12 @@ class Viewport(tk.Frame):
         self.canvas.bind("<Motion>",          self._on_mouse_move)
         self.canvas.bind("<Configure>",       lambda e: self._redraw())
 
-        self.bind_all("1", lambda e: self._set_tool(Tool.NODE))
-        self.bind_all("2", lambda e: self._set_tool(Tool.FIXED))
-        self.bind_all("3", lambda e: self._set_tool(Tool.FORCE))
-        self.bind_all("4", lambda e: self._set_tool(Tool.THERMAL))
-        self.bind_all("5", lambda e: self._set_tool(Tool.RAKE))
-        self.bind_all("6", lambda e: self._set_tool(Tool.FLANK))
+        self.bind_all("q", lambda e: self._set_tool(Tool.NODE))
+        self.bind_all("w", lambda e: self._set_tool(Tool.FIXED))
+        self.bind_all("e", lambda e: self._set_tool(Tool.FORCE))
+        self.bind_all("r", lambda e: self._set_tool(Tool.THERMAL))
+        self.bind_all("t", lambda e: self._set_tool(Tool.RAKE))
+        self.bind_all("y", lambda e: self._set_tool(Tool.FLANK))
         self.bind_all("r", lambda e: self._reset_view())
 
         self._redraw()

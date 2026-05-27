@@ -34,7 +34,7 @@ class Node:
     x:              float
     y:              float
     type:           NodeType
-    temp:     float | None = None
+    temp:           float | None = None
     id:             int = field(default_factory=lambda: id(object()))
 
     def __hash__(self):

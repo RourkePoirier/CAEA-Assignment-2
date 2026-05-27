@@ -158,6 +158,12 @@ class GeometryManager:
         self.nodes, self.elements = subdivide_triangular_mesh(self.base_nodes, self.base_elements, self.subd_level)
         self._compute_boundary_edges()
         self._restore_edge_temperature_bcs(preserved_bcs)
+        self._validate_edge_tags()
+
+    def _validate_edge_tags(self) -> None:
+        valid = set(self.boundary_edges)
+        if self.rake_edge  not in valid: self.rake_edge  = None
+        if self.flank_edge not in valid: self.flank_edge = None
 
     ## Subdivision
     def subdivide_up(self) -> bool:
