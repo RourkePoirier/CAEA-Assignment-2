@@ -87,7 +87,7 @@ class GUIManager:
         viewport.place                  (x=50,   y=50)
         mechanical_properties.place     (x=900,  y=50)
         process_properties.place        (x=900,  y=150)
-        thermal_properties.place        (x=900,  y=340)
+        thermal_properties.place        (x=900,  y=360)
         mesh_select.place               (x=900,  y=500)
         subd_up_btn.place               (x=1000, y=570)
         subd_down_btn.place             (x=900,  y=570)
