@@ -124,16 +124,30 @@ def _build_thermal_properties_dataframe(properties: dict) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=["parameter", "value"])
 
 
-def _build_thermal_bc_dataframe(geometry: GeometryManager) -> pd.DataFrame:
+def _build_thermal_bc_dataframe(geometry: GeometryManager, properties: dict) -> pd.DataFrame:
+    """
+    Columns written: type | node_1 | node_2 | value_or_keyword | T_infinity_C
+
+    For 'conv' rows, value_or_keyword holds the convection coefficient h (W/m²K).
+    For 'fixed' rows, value_or_keyword holds the prescribed temperature (°C).
+    For 'heat'/'flux' rows, value_or_keyword holds the flux keyword or numeric value.
+    For 'insulated' rows, columns 4-5 are left blank.
+    """
     rows = []
     nodes = geometry.base_nodes if geometry.base_nodes else geometry.get_nodes()
     node_index_map = {(node.x, node.y): i + 1 for i, node in enumerate(nodes)}
+
+    # Pull convection properties from the properties dict so the h value is
+    # always written — MATLAB requires a numeric h in column 4 for conv rows.
+    h_default = _get_prop(properties, "Convection Coefficient (h)", 0)
+    T_inf_default = _get_prop(properties, "Ambient Temperature (T inf)", 20)
 
     for edge in geometry.get_boundary_edges():
         na, nb = edge.get_nodes(nodes)
         n1 = node_index_map.get((na.x, na.y))
         n2 = node_index_map.get((nb.x, nb.y))
-        if n1 is None or n2 is None: continue
+        if n1 is None or n2 is None:
+            continue
 
         if edge == geometry.rake_edge:
             rows.append(("heat", n1, n2, "AutoRake", None))
@@ -144,9 +158,17 @@ def _build_thermal_bc_dataframe(geometry: GeometryManager) -> pd.DataFrame:
             continue
 
         thermal_type = geometry.get_edge_thermal_type(edge)
-        if thermal_type == ThermalType.INSULATED: rows.append(("insulated", n1, n2, None, None))
-        elif thermal_type == ThermalType.FIXED_TEMP: rows.append(("fixed", n1, n2, geometry.get_edge_fixed_temperature(edge), None))
-        else: rows.append(("conv", n1, n2, None, None))
+
+        if thermal_type == ThermalType.INSULATED:
+            rows.append(("insulated", n1, n2, None, None))
+
+        elif thermal_type == ThermalType.FIXED_TEMP:
+            temp = geometry.get_edge_fixed_temperature(edge)
+            rows.append(("fixed", n1, n2, temp, None))
+
+        else:
+            # Convection — h must be a real number; MATLAB will skip the row otherwise.
+            rows.append(("conv", n1, n2, h_default, T_inf_default))
 
     return pd.DataFrame(rows, columns=["type", "node_1", "node_2", "value_or_keyword", "T_infinity_C"])
 
@@ -157,7 +179,7 @@ def export_excel_file(geometry: GeometryManager, properties: dict | None = None)
     sheet1_df = _build_sheet1_dataframe(geometry, properties)
     cutting_df = _build_cutting_data_dataframe(properties)
     thermal_props_df = _build_thermal_properties_dataframe(properties)
-    thermal_bc_df = _build_thermal_bc_dataframe(geometry)
+    thermal_bc_df = _build_thermal_bc_dataframe(geometry, properties)
 
     with pd.ExcelWriter(EXCEL_FILENAME) as writer:
         sheet1_df.to_excel(writer, sheet_name="Sheet1", index=False)

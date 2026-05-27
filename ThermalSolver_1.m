@@ -127,7 +127,7 @@ bc = readcell(inputFile, 'Sheet','thermal_bc');
 fixedTempCount = 0;
 convectionCount = 0;
 
-for r = 2:size(bc,1)%starts after header row
+for r = 2:size(bc,1) % starts after header row
     if size(bc,2) < 2 || ismissingCell(bc{r,1})
         continue;
     end
@@ -140,8 +140,14 @@ for r = 2:size(bc,1)%starts after header row
         if size(bc, 2) >= 4 && ~ismissingCell(bc{r,4})
             Tvalue = readCellNumber(bc{r, 4});
         end
+        % Apply fixed temperature to node 1
         [K, F] = applyFixedTemperature(K, F, n1, Tvalue);
         fixedTempCount = fixedTempCount + 1;
+        % Apply fixed temperature to node 2 as well (both endpoints of edge must be constrained)
+        if size(bc,2) >= 3 && ~ismissingCell(bc{r,3})
+            n2 = readCellNumber(bc{r,3});
+            [K, F] = applyFixedTemperature(K, F, n2, Tvalue);
+        end
 
     elseif contains(type, 'heat') || contains(type, 'flux')
         n2 = readCellNumber(bc{r,3});
@@ -162,11 +168,17 @@ for r = 2:size(bc,1)%starts after header row
         F(n1) = F(n1) + q * t * edgeLength/2;
         F(n2) = F(n2) + q * t * edgeLength/2;
 
-    elseif contains (type, 'conv')
+    elseif contains(type, 'conv')
         n2 = readCellNumber(bc{r,3});
-        h = readCellNumber(bc{r,4});
-        Tinf = T_infinity_default;
 
+        % Column 4 must contain the convection coefficient h
+        if size(bc,2) < 4 || ismissingCell(bc{r,4})
+            warning('Convection BC on row %d is missing h value in column 4 — row skipped.', r);
+            continue;
+        end
+        h = readCellNumber(bc{r,4});
+
+        Tinf = T_infinity_default;
         if size(bc,2) >= 5 && ~ismissingCell(bc{r,5})
             Tinf = readCellNumber(bc{r,5});
         end
@@ -184,8 +196,9 @@ for r = 2:size(bc,1)%starts after header row
         end
         convectionCount = convectionCount + 1;
 
-    elseif contains (type, 'insulated')
-        % No action. Zero heat flux is the default boundary condition
+    elseif contains(type, 'insulated')
+        % No action. Zero heat flux is the default boundary condition.
+
     else
         warning('Unknown thermal BC type on row %d: %s. This row was ignored.', r, type);
     end

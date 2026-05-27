@@ -31,6 +31,7 @@ p_properties = [
 ]
 
 t_properties = [
+    ("Convection Coefficient (h)", "W/m^2 * K"),
     ("Thermal Conductivity X (Kx)", "W/m*K"),
     ("Thermal Conductivity Y (Ky)", "W/m*K"),
     ("Fixed Temperature (T)", "deg C"),

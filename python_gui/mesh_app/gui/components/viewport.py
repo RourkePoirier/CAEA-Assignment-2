@@ -132,7 +132,6 @@ class Viewport(tk.Frame):
         self._redraw()
 
     def _auto_unit(self):
-        """Pick the most readable unit for the current scale and compute grid_step."""
         if not self._unit_lock:
             # Switch to the unit whose scale is closest to current scale
             best = min(UNITS.items(), key=lambda kv: abs(math.log(self.scale / kv[1]["scale"])))
@@ -324,12 +323,9 @@ class Viewport(tk.Frame):
         if dlg.result is None:
             return
         mode, value = dlg.result
-        if mode == "convecting":
-            self.geometry.clear_edge_thermal_bc(edge)
-        elif mode == "insulated":
-            self.geometry.set_edge_insulated(edge)
-        elif mode == "fixed":
-            self.geometry.set_edge_fixed_temperature(edge, float(value))
+        if mode == "convecting": self.geometry.clear_edge_thermal_bc(edge)
+        elif mode == "insulated": self.geometry.set_edge_insulated(edge)
+        elif mode == "fixed": self.geometry.set_edge_fixed_temperature(edge, float(value))
         self._redraw_thermal_overlay()
 
     ############################################################################
@@ -357,13 +353,13 @@ class Viewport(tk.Frame):
                 self.geometry.add_force(Force(node, magnitude=dlg.magnitude, angle=dlg.angle))
 
             case Tool.THERMAL:
-                edge = self._hovered_edge or self._find_nearest_edge(event.x, event.y)
+                edge = self._hovered_edge or self._find_nearest_boundary_edge(event.x, event.y)
                 if edge is None: return
                 self._open_thermal_bc_dialog(edge)
                 return
 
             case Tool.RAKE:
-                edge = self._hovered_edge or self._find_nearest_edge(event.x, event.y)
+                edge = self._hovered_edge or self._find_nearest_boundary_edge(event.x, event.y)
                 if edge is None: return
                 if edge == self.geometry.flank_edge: self.geometry.flank_edge = None
                 self.geometry.rake_edge = edge
@@ -371,7 +367,7 @@ class Viewport(tk.Frame):
                 return
 
             case Tool.FLANK:
-                edge = self._hovered_edge or self._find_nearest_edge(event.x, event.y)
+                edge = self._hovered_edge or self._find_nearest_boundary_edge(event.x, event.y)
                 if edge is None: return
                 if edge == self.geometry.rake_edge: self.geometry.rake_edge = None
                 self.geometry.flank_edge = edge
@@ -402,7 +398,15 @@ class Viewport(tk.Frame):
         prev_edge = self._hovered_edge
 
         self._hovered_node = self._find_nearest_node(event.x, event.y)
-        self._hovered_edge = self._find_nearest_edge(event.x, event.y) if not self._hovered_node else None
+
+        # For edge-aware tools, hover over boundary edges; otherwise placed edges
+        if not self._hovered_node:
+            if self.tool in (Tool.THERMAL, Tool.RAKE, Tool.FLANK):
+                self._hovered_edge = self._find_nearest_boundary_edge(event.x, event.y)
+            else:
+                self._hovered_edge = self._find_nearest_placed_edge(event.x, event.y)
+        else:
+            self._hovered_edge = None
 
         if self._hovered_node: self._draw_tooltip(event.x, event.y, self._hovered_node)
         else:
@@ -456,7 +460,7 @@ class Viewport(tk.Frame):
         if dx == 0 and dy == 0: return math.hypot(px - ax, py - ay)
         t = max(0.0, min(1.0, ((px-ax)*dx + (py-ay)*dy) / (dx*dx + dy*dy)))
         return math.hypot(px - (ax + t*dx), py - (ay + t*dy))
-    
+
     def _find_nearest_node(self, px, py):
         radius_px = NODE_RADIUS_PX + 4
         for node in self.geometry.get_placed_nodes():
@@ -466,22 +470,39 @@ class Viewport(tk.Frame):
                 return node
         return None
 
-    def _find_nearest_edge(self, px, py, threshold_px=8) -> Edge | None:
+    def _find_nearest_edge_in(self, px, py, edges: list, nodes: list, threshold_px=8) -> "Edge | None":
         best      = None
         best_dist = threshold_px
-
-        for edge in self.geometry.get_placed_edges():
+        for edge in edges:
             a, b = edge.node_indices
-            na   = self.geometry.base_nodes[a]
-            nb   = self.geometry.base_nodes[b]
+            na, nb = nodes[a], nodes[b]
             ax, ay = self.world_to_screen(na.x, na.y)
             bx, by = self.world_to_screen(nb.x, nb.y)
             dist   = self._point_to_segment_dist(px, py, ax, ay, bx, by)
             if dist < best_dist:
                 best_dist = dist
                 best      = edge
-
         return best
+
+    def _find_nearest_boundary_edge(self, px, py, threshold_px=8) -> "Edge | None":
+        return self._find_nearest_edge_in(
+            px, py,
+            self.geometry.get_boundary_edges(),
+            self.geometry.base_nodes,
+            threshold_px,
+        )
+
+    def _find_nearest_placed_edge(self, px, py, threshold_px=8) -> "Edge | None":
+        return self._find_nearest_edge_in(
+            px, py,
+            self.geometry.get_placed_edges(),
+            self.geometry.base_nodes,
+            threshold_px,
+        )
+
+    # Kept for any external callers; routes to boundary edges by default.
+    def _find_nearest_edge(self, px, py, threshold_px=8) -> "Edge | None":
+        return self._find_nearest_boundary_edge(px, py, threshold_px)
     
     def _set_tool(self, t: Tool) -> None:
         self.tool = t
