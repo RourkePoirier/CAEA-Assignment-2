@@ -25,7 +25,10 @@ function out = generate_cutting_tool_data()
     p.clamp_length_mm = 1.5;
 
     %% Build default cutting tool geometry
-    polygon_xy = build_tool_polygon();
+    % Ask user to choose between conventional or bevelled tool
+    % (defaults to Conventional if dialog box closed without selection)
+    tool = questdlg('Please select a tool type:', 'Tool Options', 'Conventional', 'Bevelled', 'Conventional');
+    polygon_xy = build_tool_polygon(tool);
 
     %% Generate interior points for meshing
     interior_points = generate_interior_points(polygon_xy, p.mesh_size_mm);
@@ -102,9 +105,7 @@ function out = generate_cutting_tool_data()
     %% Thermal Cutting Data Required Parameters
     shared = {'Vc_m_min', 200; 'depth_cut_mm', 2.5; 'feed_mm_rev', 0.3};
     
-    % Ask user to choose between conventional or bevelled tool
-    % (defaults to Conventional if dialog box closed without selection)
-    tool = questdlg('Please select a tool type:', 'Tool Options', 'Conventional', 'Bevelled', 'Conventional');
+    % refer back to prior user selection
     if(tool == "Bevelled")
         separate = {'rake_angle_deg', 45; 'a2_mm', 0.8; 'L_contact_mm', 0.3; 'Pz_N', 1050; 'Pxy_N', 750};
     else
@@ -274,7 +275,19 @@ end
 
 %% Local functions
 
-function polygon_xy = build_tool_polygon()
+function polygon_xy = build_tool_polygon(shape)
+    if(shape == "Bevelled")
+        polygon_xy = [
+        0.2533  0.0
+        0.5533  0.0;
+        6.00    0.0;
+        12.00   0.0;
+        11.20  -4.0;
+        6.00   -4.0;
+        0.78   -4.0
+        0.0123 -0.2121
+    ];
+    else
     % Fixed default cutting tool profile
     polygon_xy = [
         0.00   0.0;
@@ -285,6 +298,7 @@ function polygon_xy = build_tool_polygon()
         6.00  -4.0;
         0.78  -4.0
     ];
+    end
 end
 
 function interior_points = generate_interior_points(polygon_xy, h)
