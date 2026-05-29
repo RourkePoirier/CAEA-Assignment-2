@@ -9,8 +9,7 @@ import matplotlib.tri as mtri
 def create_temp_window(tab):
     try:
         data = pd.read_excel('data_structure.xlsx', header=None, skiprows=1).values
-    except Exception as e:
-        tk.messagebox.showerror("Error", f"Failed to read Excel files: {e}")
+    except:
         return
 
     n_element = int(data[0, 0])

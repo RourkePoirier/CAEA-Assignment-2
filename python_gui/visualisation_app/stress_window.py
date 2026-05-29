@@ -21,8 +21,7 @@ def create_stress_window(tab):
         Sx   = pd.read_excel('stress_x.xlsx',       header=None).values.flatten()
         Sy   = pd.read_excel('stress_y.xlsx',       header=None).values.flatten()
         Sxy  = pd.read_excel('stress_xy.xlsx',      header=None).values.flatten()
-    except Exception as e:
-        tk.messagebox.showerror("Error", f"Failed to read Excel files: {e}")
+    except:
         return
 
     n_element = int(data[0, 0])

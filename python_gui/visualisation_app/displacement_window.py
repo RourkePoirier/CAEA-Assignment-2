@@ -8,8 +8,7 @@ def create_displacement_window(tab):
     try:
         data = pd.read_excel('data_structure.xlsx', header=None, skiprows=1).values
         U    = pd.read_excel('displacement.xlsx',   header=None).values.flatten()
-    except Exception as e:
-        tk.messagebox.showerror("Error", f"Failed to read Excel files: {e}")
+    except:
         return
 
     n_element = int(data[0, 0])
