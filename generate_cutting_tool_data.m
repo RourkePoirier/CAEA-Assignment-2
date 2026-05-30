@@ -140,16 +140,16 @@ function out = generate_cutting_tool_data()
         
         if x_mid >= (xmax - p.clamp_length_mm)
             % CLAMP REGION
-            thermal_bc_cells(i, :) = {'FixedTemp', n1, 'N/A', 20, 'N/A'};
+            thermal_bc_cells(i, :) = {'FixedTemp', n1, [], 20, []};
                 
         elseif x_mid <= 0.6
             % CUTTING ZONE - NOW CHOOSE RAKE VS FLANK
             if y_mid >= -0.1
                 % TOP EDGE: Rake Face
-                thermal_bc_cells(i, :) = {'HeatFlux', n1, n2, 'AutoRake', 'N/A'};
+                thermal_bc_cells(i, :) = {'HeatFlux', n1, n2, 'AutoRake', []};
             else
                 % BOTTOM/ANGLED EDGE: Flank Face
-                thermal_bc_cells(i, :) = {'HeatFlux', n1, n2, 'AutoFlank', 'N/A'};
+                thermal_bc_cells(i, :) = {'HeatFlux', n1, n2, 'AutoFlank', []};
             end
                 
         else

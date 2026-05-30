@@ -139,6 +139,10 @@ for r = 2:size(bc,1)%starts after header row
             Tvalue = readCellNumber(bc{r, 4});
         end
         [K, F] = applyFixedTemperature(K, F, n1, Tvalue);
+        if size(bc,2) >= 3 && ~ismissingCell(bc{r,3}) 
+            n2 = readCellNumber(bc{r,3});                
+            [K, F] = applyFixedTemperature(K, F, n2, Tvalue);
+        end
         fixedTempCount = fixedTempCount + 1;
 
     elseif contains(type, 'heat') || contains(type, 'flux')
@@ -367,5 +371,6 @@ function tf = ismissingCell(cellValue)
     tf = isempty(cellValue) || ...
          (isnumeric(cellValue) && isnan(cellValue)) || ...
          (isstring(cellValue) && strlength(cellValue) == 0) || ...
-         (ischar(cellValue) && isempty(strtrim(cellValue)));
+         (ischar(cellValue) && isempty(strtrim(cellValue))) || ...
+         (isscalar(cellValue) && ismissing(cellValue));
 end
