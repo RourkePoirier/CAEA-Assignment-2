@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['python_gui\\mesh_app\\main.py'],
+    ['python_gui\\visualisation_app\\main.py'],
     pathex=[],
     binaries=[],
     datas=[],
