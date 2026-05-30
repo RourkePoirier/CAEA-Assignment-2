@@ -25,7 +25,10 @@ function out = generate_cutting_tool_data()
     p.clamp_length_mm = 1.5;
 
     %% Build default cutting tool geometry
-    polygon_xy = build_tool_polygon();
+    % Ask user to choose between conventional or bevelled tool
+    % (defaults to Conventional if dialog box closed without selection)
+    tool = questdlg('Please select a tool type:', 'Tool Options', 'Conventional', 'Bevelled', 'Conventional');
+    polygon_xy = build_tool_polygon(tool);
 
     %% Generate interior points for meshing
     interior_points = generate_interior_points(polygon_xy, p.mesh_size_mm);
@@ -99,6 +102,70 @@ function out = generate_cutting_tool_data()
         F(2*node_id)     = F(2*node_id)     + fy_each;
     end
 
+    %% Thermal Cutting Data Required Parameters
+    shared = {'Vc_m_min', 200; 'depth_cut_mm', 2.5; 'feed_mm_rev', 0.3};
+    
+    % refer back to prior user selection
+    if(tool == "Bevelled")
+        separate = {'rake_angle_deg', 45; 'a2_mm', 0.8; 'L_contact_mm', 0.3; 'Pz_N', 1050; 'Pxy_N', 750};
+    else
+        separate = {'rake_angle_deg', 0; 'a2_mm', 0.7; 'L_contact_mm', 0.5; 'Pz_N', 900; 'Pxy_N', 600};
+    end
+
+    thermal_data = vertcat(shared, separate);
+    
+    %% Thermal Boundary Conditions
+    header_row = {'Type', 'Node1', 'Node2', 'Value', 'Tinf'};
+    
+    % Code section I modified from Bard AI assistance
+
+    % 1. Find all element edge segments that lie on the outer boundary
+    % Loop through elements to find edges that are only shared by ONE triangle
+    edges = [tri(:, [1 2]); tri(:, [2 3]); tri(:, [3 1])];
+    edges = sort(edges, 2);
+    [unique_edges, ~, idx] = unique(edges, 'rows');
+    counts = accumarray(idx, 1);
+    boundary_edges = unique_edges(counts == 1, :); % These are the outer perimeter segments
+    
+    thermal_bc_cells = cell(size(boundary_edges,1), 5); % preallocate cell array based on number of boundary edges
+    
+    % 2. Process each boundary edge segment based on its geometric location
+    for i = 1:size(boundary_edges, 1)
+        n1 = boundary_edges(i, 1);
+        n2 = boundary_edges(i, 2);
+        
+        % Calculate the midpoint in x-direction of the segment to check its region
+        x_mid = (X(n1) + X(n2)) / 2;
+        y_mid = (Y(n1) + Y(n2)) / 2;
+        
+        if x_mid >= (xmax - p.clamp_length_mm)
+            % CLAMP REGION
+            thermal_bc_cells(i, :) = {'FixedTemp', n1, 'N/A', 20, 'N/A'};
+                
+        elseif x_mid <= 0.6
+            % CUTTING ZONE - NOW CHOOSE RAKE VS FLANK
+            if y_mid >= -0.1
+                % TOP EDGE: Rake Face
+                thermal_bc_cells(i, :) = {'HeatFlux', n1, n2, 'AutoRake', 'N/A'};
+            else
+                % BOTTOM/ANGLED EDGE: Flank Face
+                thermal_bc_cells(i, :) = {'HeatFlux', n1, n2, 'AutoFlank', 'N/A'};
+            end
+                
+        else
+            % EXPOSED PERIMETER
+            thermal_bc_cells(i, :) = {'Convection', n1, n2, 22, 20};
+        end
+    end
+    
+    % Combine with the header row
+    thermal_bc_data = [header_row; thermal_bc_cells];
+
+    % end section developed with help from Bard AI
+
+    % All other nodes are internal, treated as insulated, in which case h = 0 for every node of that element
+
+
     %% Export to Excel (match Python/default format exactly)
     headers = {'n_element','n_nodes','ncon1','ncon2','ncon3', ...
                'X','Y','E','A','F','NDU','dzero','v','t'};
@@ -142,7 +209,11 @@ function out = generate_cutting_tool_data()
     end
 
     excel_path = fullfile(project_folder, 'data_structure.xlsx');
-    writecell(data, excel_path, "WriteMode","replacefile");
+    writecell(data, excel_path, 'Sheet', 'Sheet1', 'WriteMode', 'replacefile');
+    % write the cutting data to a different sheet
+    writecell(thermal_data, excel_path, 'Sheet', 'cutting_data', 'WriteMode', 'overwritesheet');
+    % write the thermal boudary conditions to a third sheet
+    writecell(thermal_bc_data, excel_path, 'Sheet', 'thermal_bc', 'WriteMode', 'overwritesheet');
 
     %% Save preview plot
     fig = figure('Visible', 'off');
@@ -204,7 +275,19 @@ end
 
 %% Local functions
 
-function polygon_xy = build_tool_polygon()
+function polygon_xy = build_tool_polygon(shape)
+    if(shape == "Bevelled")
+        polygon_xy = [
+        0.2533  0.0
+        0.5533  0.0;
+        6.00    0.0;
+        12.00   0.0;
+        11.20  -4.0;
+        6.00   -4.0;
+        0.78   -4.0
+        0.0123 -0.2121
+    ];
+    else
     % Fixed default cutting tool profile
     polygon_xy = [
         0.00   0.0;
@@ -215,6 +298,7 @@ function polygon_xy = build_tool_polygon()
         6.00  -4.0;
         0.78  -4.0
     ];
+    end
 end
 
 function interior_points = generate_interior_points(polygon_xy, h)
@@ -253,3 +337,4 @@ function A = signed_triangle_area(coords)
 
     A = 0.5 * det([1 x1 y1; 1 x2 y2; 1 x3 y3]);
 end
+
