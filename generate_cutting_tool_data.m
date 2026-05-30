@@ -112,7 +112,7 @@ function out = generate_cutting_tool_data()
         separate = {'rake_angle_deg', 0; 'a2_mm', 0.7; 'L_contact_mm', 0.5; 'Pz_N', 900; 'Pxy_N', 600};
     end
 
-    thermal_data = vertcat(shared, separate);
+    cutting_data = vertcat(shared, separate);
     
     %% Thermal Boundary Conditions
     header_row = {'Type', 'Node1', 'Node2', 'Value', 'Tinf'};
@@ -143,13 +143,19 @@ function out = generate_cutting_tool_data()
             thermal_bc_cells(i, :) = {'FixedTemp', n1, [], 20, []};
                 
         elseif x_mid <= 0.6
-            % CUTTING ZONE - NOW CHOOSE RAKE VS FLANK
+            % Edge length of this segment
+            seg_len = hypot(X(n2)-X(n1), Y(n2)-Y(n1));
+            a2_mm = cutting_data{strcmp(cutting_data(:,1),'a2_mm'), 2};
+        
             if y_mid >= -0.1
-                % TOP EDGE: Rake Face
+                % Rake face: apply only if edge length matches contact length
                 thermal_bc_cells(i, :) = {'HeatFlux', n1, n2, 'AutoRake', []};
-            else
-                % BOTTOM/ANGLED EDGE: Flank Face
+            elseif seg_len <= a2_mm * 1.5  % flank contact zone only - short edges near tip
+                % Flank face: only short edges, not the full side of the tool
                 thermal_bc_cells(i, :) = {'HeatFlux', n1, n2, 'AutoFlank', []};
+            else
+                % Long edge on the left side - treat as convection
+                thermal_bc_cells(i, :) = {'Convection', n1, n2, 22, 20};
             end
                 
         else
@@ -211,7 +217,7 @@ function out = generate_cutting_tool_data()
     excel_path = fullfile(project_folder, 'data_structure.xlsx');
     writecell(data, excel_path, 'Sheet', 'Sheet1', 'WriteMode', 'replacefile');
     % write the cutting data to a different sheet
-    writecell(thermal_data, excel_path, 'Sheet', 'cutting_data', 'WriteMode', 'overwritesheet');
+    writecell(cutting_data, excel_path, 'Sheet', 'cutting_data', 'WriteMode', 'overwritesheet');
     % write the thermal boudary conditions to a third sheet
     writecell(thermal_bc_data, excel_path, 'Sheet', 'thermal_bc', 'WriteMode', 'overwritesheet');
 
